@@ -1,0 +1,336 @@
+// RESERVED UNIT CUSTOM ID RANGE: 40-49
+
+static const string zrSTName = "SIEGE TANK";
+static const string zrSTType = "Level 1 Artillery Tower";
+static const string zrSTDesc = "Bombards an area dealing around the impact in addition to strong single target damage, but attacks very slowly.";
+static const string zrSTStrong = "Artillery towers are strong against most enemies, but especially swarms.";
+static const string zrSTWeak = "Lategame their per-shot damage output is too low to make a significant impact, and must therefore be upgraded quickly.";
+static const string zrSTUpgrades = "Can be upgraded to level 2 Artillery.";
+static const int zrSTCost = 125;
+
+static const string zrST2Name = "SIEGE TANK";
+static const string zrST2Type = "Level 2 Artillery Tower";
+static const string zrST2Desc = "With its doubled battlefield potential, the level 2 artillery is not bigger, but better.";
+static const string zrST2Strong = zrSTStrong;
+static const string zrST2Weak = zrSTWeak;
+static const string zrST2Upgrades = "Can be upgraded to level 3 Artillery.";
+static const int zrST2Cost = 220;
+
+static const string zrST3Name = "SIEGE TANK";
+static const string zrST3Type = "Level 3 Artillery Tower";
+static const string zrST3Desc = "Increased target acquisition range and raw damage output makes this siege unit able to level swarms of enemies with ease.";
+static const string zrST3Strong = zrSTStrong;
+static const string zrST3Weak = zrSTWeak;
+static const string zrST3Upgrades = "Can be upgraded to a ST/WM/R or the Tesla Hammer.";
+static const int zrST3Cost = 320;
+
+// Spawns Raven + Widow Mine
+// xxx seeker missile never misses, fires every 12 seconds
+// xxx use PDD if close to barracks?
+// Further upgrades:
+// - 1-3 Widow Mines?
+// - Spider mines?
+// - Sentry Mine?
+
+// XXX Both tesla and MAIGS strong vs swarms?
+// One with psionic, one with explosive. Does it matter?
+
+// Mine-centric AI Group with Siegetank, MAIGS
+static const string zrST41Name = "ST/WM/R";
+static const string zrST41Type = "Level 4 Artillery Tower";
+static const string zrST41Desc = "Aided by a Raven support unit and Widow Mines, this artillery group is a utility knife for slicing through waves of enemies with raw explosive power.";
+static const string zrST41Strong = "Strong vs swarms of enemies.";
+static const string zrST41Weak = "Weak vs powerful enemies.";
+static const string zrST41Upgrades = "That Raven will be your favorite.";
+static const int zrST41Cost = 400;
+
+// AoE shock ability like Major Anvil in CP2 or the hammer at cannon hit
+// both
+static const string zrST42Name = "TESLA HAMMER";
+static const string zrST42Type = "Level 4 Artillery Tower";
+static const string zrST42Desc = "Describe the tesla.";
+static const string zrST42Strong = "Strong vs wut?";
+static const string zrST42Weak = "Weak vs wut?";
+static const string zrST42Upgrades = "You can upgradez yyyy.";
+static const int zrST42Cost = 400;
+
+static int zrcvsOriginX = 40;
+static int zrcvsOriginY = 41;
+
+static unit[20] zrSiegeRavens;
+static int zrNumRavens;
+
+// ST = SiegeTower
+static int zrSTMainButton;
+static int zrST2Button;
+static int zrST3Button;
+static int zrST41Button;
+static int zrST42Button;
+
+static int zrsNumWaypoints = -1;
+
+void zrSiegeUpgradeLevelTwo(unit siege) {
+	// Double the damage
+	UnitBehaviorAddPlayer(siege, "AttackBonus", ZR_TOWER_PLAYER_ID, 1);
+	UnitSetCustomValue(siege, CUSTOM_TOWER_LEVEL, 2);
+	UnitSetScale(siege, 80.0, 80.0, 80.0);
+}
+
+void zrSiegeUpgradeLevelThree(unit siege) {
+	// Double the damage + from avg to long range
+	UnitBehaviorAddPlayer(siege, "AttackBonus", ZR_TOWER_PLAYER_ID, 1);
+	UnitBehaviorAddPlayer(siege, "RangeBonus", ZR_TOWER_PLAYER_ID, ZR_LONG_TOWER_RANGE - ZR_AVERAGE_TOWER_RANGE);
+	UnitSetCustomValue(siege, CUSTOM_TOWER_LEVEL, 3);
+	UnitSetScale(siege, 100.0, 100.0, 100.0);
+}
+
+void zrsMoveRaven(unit raven) {
+	int rng = RandomInt(-2, zrsNumWaypoints);
+	point target;
+	if ( rng < 1 ) {
+		target = Point(UnitGetCustomValue(raven, zrcvsOriginX), UnitGetCustomValue(raven, zrcvsOriginY));
+	} else {
+		target = PointFromName("Barracks Waypoint " + IntToString(rng));
+	}
+	UnitIssueOrder(raven, OrderTargetingPoint(zr_CmdAttack, RegionRandomPoint(RegionCircle(target, 5))), c_orderQueueAddToEnd);
+}
+
+static trigger zrsIdleTrigger;
+bool zrsHandleIdle(bool check, bool run) {
+	unit raven = EventUnit();
+	if ( check && UnitGetType(raven) != "Raven" ) {
+		return false;
+	}
+	if ( !run ) { return true; }
+	zrsMoveRaven(raven);
+	return true;
+}
+
+void zrsCountWaypoints() {
+	int nextWp = 1;
+	while ( true ) {
+		if ( PointFromName("Barracks Waypoint " + IntToString(nextWp)) ) {
+			nextWp += 1;
+		} else {
+			break;
+		}
+	}
+	zrsNumWaypoints = nextWp - 1;
+}
+
+// Only considers distance from origin to WP
+static point zrsGetWPByDistance(point from) {
+	point wp;
+	fixed distance = -1;
+	fixed tmpDistance;
+	point nearest;
+	int nextWp = 1;
+	while ( true ) {
+		wp = PointFromName("Barracks Waypoint " + IntToString(nextWp));
+		if ( wp == null ) { break; }
+
+		tmpDistance = DistanceBetweenPoints(wp, from);
+		if ( distance == -1 || tmpDistance < distance ) {
+			distance = tmpDistance;
+			nearest = wp;
+		}
+		nextWp += 1;
+	}
+	return nearest;
+}
+
+// Checks if origin and WP is connected, and orders by pathing cost, not distance.
+static point zrsGetWPByPathing(point from) {
+	point wp;
+	point nearest = from;
+	int nextWp = 1;
+	int cost;
+	int tmpCost = -1;
+
+	while ( true ) {
+		wp = PointFromName("Barracks Waypoint " + IntToString(nextWp));
+		if ( wp == null ) { break; }
+		if ( from != wp && PointPathingIsConnected(from, wp)) {
+			cost = PointPathingCost(from, wp);
+			if ( tmpCost == -1 || cost < tmpCost ) {
+				tmpCost = cost;
+				nearest = wp;
+			}
+		}
+		nextWp += 1;
+	}
+	return nearest;
+}
+
+static point zrScanAngle(point origin, fixed angle) {
+	fixed distance = 3;
+	point test = PointWithOffsetPolar(origin, distance, angle);
+	while ( distance < 11 && ! PointPathingIsConnected(origin, test) ) {
+		distance += 1;
+		test = PointWithOffsetPolar(origin, distance, angle);
+	}
+	return test;
+}
+
+static point zrFindPassableMinePoint(point origin, point max, fixed angle) {
+	point test = zrScanAngle(origin, angle);
+	while ( ! PointPathingIsConnected(origin, test) ) {
+		angle += 20;
+		if ( angle == AngleBetweenPoints(origin, max) ) {
+			// We went all the way around and cant find a point.
+			test = origin;
+			break;
+		}
+		test = zrScanAngle(origin, angle);
+	}
+	
+	return test;
+}
+
+static point zrsGetRandomWithin(point pos) { return RegionRandomPoint(RegionCircle(pos, 1.5)); }
+
+static unit zrsCreateWidowMine(point spawn, point move) {
+	unit widow;
+	UnitCreate(1, "WidowMine", c_unitCreateIgnorePlacement, ZR_TOWER_PLAYER_ID, spawn, 0);
+	widow = UnitLastCreated();
+	UnitSetState(widow, c_unitStateInvulnerable, true);
+	UnitSetState(widow, c_unitStateSelectable, false);
+	UnitBehaviorAddPlayer(widow, "PermanentlyUncommandable", ZR_TOWER_PLAYER_ID, 1);
+	UnitIssueOrder(widow, OrderTargetingPoint(zr_CmdMove, zrsGetRandomWithin(move)), c_orderQueueReplace);
+	UnitIssueOrder(widow, Order(AbilityCommand("WidowMineBurrow", 0)), c_orderQueueAddToEnd);
+	return widow;
+}
+
+
+static void zrsSpawnMines(unit siege) {
+	point siegePoint = UnitGetPosition(siege);
+
+	// This is where we spawn the first widow mine, right at the nearest WP
+	// as the crow flies because pathing can be obstructed.
+	point first = zrsGetWPByDistance(siegePoint);
+	
+	// This finds the nearest WP from |first|
+	point nearest = zrsGetWPByPathing(first);
+
+	fixed angle = AngleBetweenPoints(first, nearest);
+
+	point minePoint = zrFindPassableMinePoint(first, nearest, angle);
+	point secondMinePoint = zrFindPassableMinePoint(first, nearest, angle + 180);
+
+	zrsCreateWidowMine(siegePoint, first);
+
+	zrsCreateWidowMine(siegePoint, minePoint);
+	
+	zrsCreateWidowMine(siegePoint, secondMinePoint);
+}
+
+void zrSiegeUpgradeLevel41(unit siege) {
+	point pos = UnitGetPosition(siege);
+	unit raven;
+	unit widow;
+	
+	// Double the damage
+	UnitBehaviorAddPlayer(siege, "AttackBonus", ZR_TOWER_PLAYER_ID, 1);
+	UnitSetCustomValue(siege, CUSTOM_TOWER_LEVEL, 41);
+	ActorSend(libNtve_gf_MainActorofUnit(siege), "ModelSwap {SiegeBreakerSieged}");
+
+	UnitCreate(1, "Raven", c_unitCreateIgnorePlacement, ZR_TOWER_PLAYER_ID, pos, 0);
+	raven = UnitLastCreated();
+	UnitSetState(raven, c_unitStateInvulnerable, true);
+	// We dont use energy, just set 100 to hide the status bar.
+	UnitSetPropertyInt(raven, c_unitPropEnergyPercent, 100);
+	UnitSetState(raven, c_unitStateSelectable, false);
+	UnitBehaviorAddPlayer(raven, "PermanentlyUncommandable", ZR_TOWER_PLAYER_ID, 1);
+
+	zrSiegeRavens[zrNumRavens] = raven;
+	zrNumRavens += 1;
+
+	UnitSetScale(raven, 60, 60, 60);
+	UnitSetCustomValue(raven, zrcvsOriginX, PointGetX(pos));
+	UnitSetCustomValue(raven, zrcvsOriginY, PointGetY(pos));
+	
+	if ( zrsNumWaypoints == -1 ) { zrsCountWaypoints(); }
+	
+	if ( zrsIdleTrigger == null ) {
+		zrsIdleTrigger = TriggerCreate("zrsHandleIdle");
+	}
+	TriggerAddEventUnitBecomesIdle(zrsIdleTrigger, UnitRefFromUnit(raven), true);
+	zrsMoveRaven(raven);
+	
+	zrsSpawnMines(siege);
+}
+
+void zrSiegeUpgradeLevel42(unit siege) {
+	// Double the damage, reduce range, add electrocute to hit
+	UnitBehaviorAddPlayer(siege, "AttackBonus", ZR_TOWER_PLAYER_ID, 1);
+	UnitBehaviorRemove(siege, "RangeBonus", -1); // Remove all
+	UnitSetCustomValue(siege, CUSTOM_TOWER_LEVEL, 42);
+	libNtve_gf_CreateModelAtPoint("PsiRiftImpact", UnitGetPosition(siege));
+}
+
+bool zrSiegeHandleButton(bool check, bool run) {
+	int control = EventDialogControl();
+	unit tmp;
+	if (!run) { return true; }
+	
+	if ( control == zrSTMainButton ) {
+		tmp = zrCoreTryCreateTower(control, zrSTCost);
+		// if it fails (not enough minerals), tmp is beacon unit
+		if ( UnitGetType(tmp) == "SiegeTankSieged" ) {
+			UnitSetScale(tmp, 60.0, 60.0, 60.0);
+		}
+	} else if ( control == zrST2Button ) {
+		if ( zrCoreUpgradeTower(zrCoreSelectedTower, zrST2Cost) ) {
+			zrSiegeUpgradeLevelTwo(zrCoreSelectedTower);
+		}
+	} else if ( control == zrST3Button ) {
+		if ( zrCoreUpgradeTower(zrCoreSelectedTower, zrST3Cost) ) {
+			zrSiegeUpgradeLevelThree(zrCoreSelectedTower);
+		}
+	} else if ( control == zrST41Button ) {
+		if ( zrCoreUpgradeTower(zrCoreSelectedTower, zrST41Cost) ) {
+			zrSiegeUpgradeLevel41(zrCoreSelectedTower);
+		}
+	} else if ( control == zrST42Button ) {
+		if ( zrCoreUpgradeTower(zrCoreSelectedTower, zrST42Cost) ) {
+			zrSiegeUpgradeLevel42(zrCoreSelectedTower);
+		}
+	}
+	return true;
+}
+
+void zrSiegeInit() {
+	string tmp;
+	
+	tmp = zrCoreFormatDescription(zrSTName, zrSTType, zrSTDesc, zrSTStrong, zrSTWeak, zrSTUpgrades, zrSTCost);
+	zrSTMainButton = zrCoreRegisterTowerClass("SiegeTankSieged", 125, "Siege Tower", tmp);
+	
+	tmp = zrCoreFormatDescription(zrST2Name, zrST2Type, zrST2Desc, zrST2Strong, zrST2Weak, zrST2Upgrades, zrST2Cost);
+	zrST2Button = zrCoreRegisterUpgrade(zrSTMainButton, 220, "Upgrade", tmp);
+	
+	tmp = zrCoreFormatDescription(zrST3Name, zrST3Type, zrST3Desc, zrST3Strong, zrST3Weak, zrST3Upgrades, zrST3Cost);
+	zrST3Button = zrCoreRegisterUpgrade(zrST2Button, 320, "Upgrade", tmp);
+	
+	tmp = zrCoreFormatDescription(zrST41Name, zrST41Type, zrST41Desc, zrST41Strong, zrST41Weak, zrST41Upgrades, zrST41Cost);
+	zrST41Button = zrCoreRegisterUpgrade(zrST3Button, 400, zrST41Name, tmp);
+	
+	tmp = zrCoreFormatDescription(zrST42Name, zrST42Type, zrST42Desc, zrST42Strong, zrST42Weak, zrST42Upgrades, zrST42Cost);
+	zrST42Button = zrCoreRegisterUpgrade(zrST3Button, 400, "Tesla Hammer", tmp);
+
+	TechTreeUpgradeAddLevel(1, "HunterSeeker", 1);
+	TechTreeUpgradeAddLevel(1, "DurableMaterials", 1);
+	//TechTreeUpgradeAddLevel(1, "SiegeTankShapedBlast", 1); // reduced damage to friendlies
+	// TechTreeUpgradeAddLevel(1, "MaelstromRounds", 1); +40 single target dmg
+	
+	CatalogFieldValueSet(c_gameCatalogWeapon, "CrucioShockCannon", "Range", 1, IntToString(ZR_AVERAGE_TOWER_RANGE));
+	CatalogFieldValueSet(c_gameCatalogWeapon, "CrucioShockCannon", "MinimumRange", 1, "0");
+	
+	CatalogFieldValueSet(c_gameCatalogAbil, "SeekerMissile", "AutoCastRange", 1, IntToString(ZR_BASE_TOWER_RANGE));
+	CatalogFieldValueSet(c_gameCatalogAbil, "SeekerMissile", "Cost[0].Cooldown.TimeUse", 1, "15");
+	CatalogFieldValueSet(c_gameCatalogAbil, "SeekerMissile", "Cost[0].Vital[2]", 1, "0");
+	CatalogFieldValueSet(c_gameCatalogAbil, "SeekerMissile", "Range[0]", 1, IntToString(ZR_BASE_TOWER_RANGE));
+
+	CatalogFieldValueSet(c_gameCatalogUnit, "Raven", "Speed", 1, "1.5");
+
+	TriggerAddEventDialogControl(TriggerCreate("zrSiegeHandleButton"), ZR_TOWER_PLAYER_ID, c_invalidDialogControlId, c_triggerControlEventTypeClick);
+}

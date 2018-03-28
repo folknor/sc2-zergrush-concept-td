@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Regions>
+    <region id="1">
+        <name value="Exit"/>
+        <shape type="rect">
+            <quad value="7.5024,25.1733,12.5612,35.9172"/>
+        </shape>
+    </region>
+    <region id="3">
+        <name value="Entrance 2"/>
+        <shape type="circle">
+            <center value="89.0332,6.7453"/>
+            <radius value="3.7221"/>
+        </shape>
+    </region>
+    <region id="4">
+        <name value="Exit/Safe Zone"/>
+        <shape type="rect">
+            <quad value="18.6364,50.9631,36.7392,61.8242"/>
+        </shape>
+    </region>
+    <region id="5">
+        <name value="Truck Stop"/>
+        <shape type="diamond">
+            <center value="73.2841,21.1477"/>
+            <width value="5.937"/>
+            <height value="3.3173"/>
+        </shape>
+        <shape type="diamond">
+            <center value="71.8161,62.9077"/>
+            <width value="3.8874"/>
+            <height value="6.844"/>
+        </shape>
+    </region>
+    <region id="2">
+        <name value="Entrance 1"/>
+        <shape type="circle">
+            <center value="91.3891,66.9526"/>
+            <radius value="4.2333"/>
+        </shape>
+    </region>
+</Regions>

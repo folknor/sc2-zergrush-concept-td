@@ -1,0 +1,98 @@
+// RESERVED UNIT CUSTOM ID RANGE: 20-29
+
+static const string zrATName = "ARCHON TOWER";
+static const string zrATType = "Level 1 Magic Tower";
+static const string zrATDesc = "The Archon casts armor piercing bolts at your enemies, ignoring any physical armor. It attacks very slowly.";
+static const string zrATStrong = "Generally strong against slow, armored creatures, like Aberrations and Ultralisks.";
+static const string zrATWeak = "Due to the low damage and attack speed, the Archon is useless against swarms of units.";
+static const string zrATUpgrades = "Can be upgraded to the level 2 Magic Tower.";
+static const int zrATCost = 100;
+
+// 3/3 upgrade
+static const string zrAT2Name = "ARCHON TOWER";
+static const string zrAT2Type = "Level 2 Magic Tower";
+static const string zrAT2Desc = "The new Archon casts enhanced lightning bolts, tearing through flesh and bone.";
+static const string zrAT2Strong = zrATStrong;
+static const string zrAT2Weak = zrATWeak;
+static const string zrAT2Upgrades = "Can be upgraded to a level 3 Magic Tower.";
+static const int zrAT2Cost = 160;
+
+// +2 range
+static const string zrAT3Name = "ARCHON TOWER";
+static const string zrAT3Type = "Level 3 Magic Tower";
+static const string zrAT3Desc = "Casts high-energy lightning bolts, ripping through the very essence of the Zerg. Obliterates all but the toughest enemies.";
+static const string zrAT3Strong = zrATStrong;
+static const string zrAT3Weak = zrATWeak;
+static const string zrAT3Upgrades = "Can be upgraded to the Archon Templar or Wild Archon.";
+static const int zrAT3Cost = 240;
+
+// Archon Templar: Psionic Storm and Phase Shift (banish?)
+static const string zrAT41Name = "TEMPLAR ARCHON";
+static const string zrAT41Type = "Level 4 Magic Tower";
+static const string zrAT41Desc = "Veteran Archon that augments his raging melee prowess with powerful psionic masteries. Lays down Psionic Storms that damage your enemies over time and even slows them, and can banish larger enemies from the battlefield for short periods of time.";
+static const string zrAT41Strong = "Where the lower Archons were not very adept at dealing with swarms, the Templar can really slow the Zerg down.";
+static const string zrAT41Weak = "Still not very efficient versus stronger enemies, but you can not call the Templar weak in any respect.";
+static const string zrAT41Upgrades = "You can upgrade the unit to cast Psionic Storms and Phase Shift.";
+static const int zrAT41Cost = 300;
+
+// Wild Archon: Increased attack speed (continous, Void Ray weapon?), Feedback and Archonspawns
+// Archonspawns: Tiny, red (Dark) archon that charges an enemy and explodes with a Ultrasonic Pulse
+static const string zrAT42Name = "WILD ARCHON";
+static const string zrAT42Type = zrAT41Type;
+static const string zrAT42Desc = "Raw power courses through the hands of this being of pure energy. Continous beams of deadly psionic energy combined with Feedback and Archonspawns make this a deadly tower versus any enemy.";
+static const string zrAT42Strong = "Specializes in obliterating large foes.";
+static const string zrAT42Weak = "Although you would not employ Wild Archons versus swarms of Zerglings, you could not live without it when facing Omegalisks.";
+static const string zrAT42Upgrades = "Can be upgraded to cast Feedback and swarm Archonspawns.";
+static const int zrAT42Cost = 300;
+
+// AT = ArchonTower
+static int zrATMainButton;
+static int zrAT2Button;
+static int zrAT3Button;
+static int zrAT41Button;
+static int zrAT42Button;
+
+bool zrArchonHandleButton(bool check, bool run) {
+	int control = EventDialogControl();
+	if (!run) { return true; }
+	
+	if ( control == zrATMainButton ) {
+		zrCoreTryCreateTower(control, zrATCost);
+	} else if ( control == zrAT2Button ) {
+		zrdbg("Archon", "Create level 2.");
+		zrCoreUpgradeTower(zrCoreSelectedTower, zrAT2Cost);
+	} else if ( control == zrAT3Button ) {
+		zrdbg("Archon", "Create level 3.");
+		zrCoreUpgradeTower(zrCoreSelectedTower, zrAT3Cost);
+	} else if ( control == zrAT41Button ) {
+		zrdbg("Archon", "Create level 4.1.");
+		zrCoreUpgradeTower(zrCoreSelectedTower, zrAT41Cost);
+	} else if ( control == zrAT42Button ) {
+		zrdbg("Archon", "Create level 4.2.");
+		zrCoreUpgradeTower(zrCoreSelectedTower, zrAT42Cost);
+	}
+	return true;
+}
+
+void zrArchonInit() {
+	string tmp;
+	
+	tmp = zrCoreFormatDescription(zrATName, zrATType, zrATDesc, zrATStrong, zrATWeak, zrATUpgrades, zrATCost);
+	zrATMainButton = zrCoreRegisterTowerClass("Archon", 100, "Archon Tower", tmp);
+	
+	tmp = zrCoreFormatDescription(zrAT2Name, zrAT2Type, zrAT2Desc, zrAT2Strong, zrAT2Weak, zrAT2Upgrades, zrAT2Cost);
+	zrAT2Button = zrCoreRegisterUpgrade(zrATMainButton, 160, "Upgrade", tmp);
+	
+	tmp = zrCoreFormatDescription(zrAT3Name, zrAT3Type, zrAT3Desc, zrAT3Strong, zrAT3Weak, zrAT3Upgrades, zrAT3Cost);
+	zrAT3Button = zrCoreRegisterUpgrade(zrAT2Button, 240, "Upgrade", tmp);
+	
+	tmp = zrCoreFormatDescription(zrAT41Name, zrAT41Type, zrAT41Desc, zrAT41Strong, zrAT41Weak, zrAT41Upgrades, zrAT41Cost);
+	zrAT41Button = zrCoreRegisterUpgrade(zrAT3Button, 300, "Upgrade", tmp);
+	
+	tmp = zrCoreFormatDescription(zrAT42Name, zrAT42Type, zrAT42Desc, zrAT42Strong, zrAT42Weak, zrAT42Upgrades, zrAT42Cost);
+	zrAT42Button = zrCoreRegisterUpgrade(zrAT3Button, 300, "Upgrade", tmp);
+
+	CatalogFieldValueSet(c_gameCatalogWeapon, "PsionicShockwave", "Range", 1, IntToString(ZR_BASE_TOWER_RANGE));
+
+	TriggerAddEventDialogControl(TriggerCreate("zrArchonHandleButton"), ZR_TOWER_PLAYER_ID, c_invalidDialogControlId, c_triggerControlEventTypeClick);
+}

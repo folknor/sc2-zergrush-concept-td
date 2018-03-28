@@ -1,0 +1,456 @@
+
+// userdatainstancecount for a table that doesnt exist returns 0
+
+// We need:
+// - Total wave time so that we can do a count down in the UI
+// 
+
+// Level
+//   / Stage 1...N
+//       / Wave 1...N
+
+// XXX Separate to Waves + Mode (campaign / survival?)
+
+static const string zrField_WaveUnit = "Unit";
+static const string zrField_WaveStartTime = "Start";
+static const string zrField_WaveCount = "Waves";
+static const string zrField_WaveTimeBetween = "Time Between";
+static const string zrField_WaveAmount = "Amount";
+static const string zrField_WaveEntrance = "Entrance";
+static const string zrField_WaveExit = "Exit";
+
+static string[20] zrWaveFlavour;
+
+static int zrWavesNumStages;
+
+// How long in game time to show temporary warning effects
+static const int ZRSTAGE_TEMP = 20;
+
+int zrStagesAmount() {
+	return zrWavesNumStages;
+}
+
+int zrEventStageIndex = -1;
+int EventStageIndex() { return zrEventStageIndex; }
+
+void zrStageEvent(string event, int index) {
+	zrEventStageIndex = index;
+	TriggerSendEvent(event);
+}
+
+static const string zrWaves_NotificationFormat = "" +
+	"<s val=\"ZRH1\"><c val=\"c0392b\">Wave %stage Incoming!</c></s>" +
+	"<n/>" +
+	"<s val=\"ChallengeScreenText\">%flavour</s>";
+
+static void zrStageAnnounce(zrStage stage) {
+	int r = RandomInt(0, 19);
+	int tmp;
+	string msg = zrWaves_NotificationFormat;
+	msg = StringReplaceWord(msg, "%stage", IntToString(stage.index), 1, true);
+	msg = StringReplaceWord(msg, "%flavour", zrWaveFlavour[r], 1, true);
+	// should use our own dialog so we can fade this automatically over time, fire and forget
+	UIDisplayMessage(PlayerGroupAll(), c_messageAreaDirective, StringToText(msg));
+	// xxx remove ui message after x sec
+}
+
+static color zrStagePingColor = Color(255, 0, 0);
+
+static void zrStagePing(zrStage stage) {
+	int r = 1; // wave index starts at 1
+	for (; r <= 20; r += 1) {
+		if ( stage.waves[r].used && !stage.waves[r].pinged ) {
+			stage.waves[r].pinged = true;
+			stage.waves[r].pingPoint = PointFromName(stage.waves[r].entrance + "/Ping");
+			// xxx error if ping is null
+			PingCreate(PlayerGroupAll(), "BeaconAssaultPing", stage.waves[r].pingPoint, zrStagePingColor, ZRSTAGE_TEMP);
+		}
+	}
+}
+
+struct zrWavesEntranceUnitData {
+	string unitType;
+	int count;
+	bool used;
+};
+struct zrWavesEntranceData {
+	string entrance;
+	bool used;
+	zrWavesEntranceUnitData[20] units;
+};
+typedef structref<zrWavesEntranceData> zrEntranceData;
+typedef structref<zrWavesEntranceUnitData> zrEntranceUnit;
+static zrWavesEntranceData[20] zrEntrances;
+
+// Oh my... Pls u gief sane code?
+static void zrStageDisplayCounts(zrStage stage) {
+	int r = 1; // wave index starts at 1
+	int i = 0; // type index starts at 0
+	int j = 0;
+	text tmp;
+	text x = StringToText("x ");
+	text n = StringToText("<n/>");
+	zrEntranceData entrance;
+	zrWave w;
+	zrEntranceUnit data;
+	for (; i < 20; i += 1) {
+		entrance = zrEntrances[i];
+		entrance.used = false;
+		for (; j < 20; j += 1) {
+			entrance.units[j].unitType = "";
+			entrance.units[j].count = 0;
+			entrance.units[j].used = false;
+		}
+		j = 0;
+	}
+	i = 0;
+	
+	// 1. Create list of all entrances / pingpoints, whatever
+	
+	// 2. Loop all waves in the stage, find units spawning in
+	// each entrance
+	
+	// 3. Map entrance to unit type + count
+	
+	// THIS IS SO UGLY I HATEZ IT
+	for (; r <= 20; r += 1) {
+		if ( stage.waves[r].used ) {
+			w = stage.waves[r];
+
+			// loop all entrancedatas until we find one with this point
+			for (; i < 20; i += 1) {
+				if ( !zrEntrances[i].used ) {
+					entrance = zrEntrances[i];
+				}
+				if ( zrEntrances[i].entrance == w.entrance ) {
+					entrance = zrEntrances[i];
+					break;
+				}
+			}
+			i = 0;
+			entrance.used = true;
+			entrance.entrance = w.entrance;
+			for (; i < 20; i += 1) {
+				if ( !entrance.units[i].used ) {
+					data = entrance.units[i];
+				}
+				if ( entrance.units[i].unitType == w.unitType ) {
+					data = entrance.units[i];
+					break;
+				}
+			}
+			i = 0;
+
+			data.unitType = w.unitType;
+			data.used = true;
+			data.count = data.count + (w.waveCount * w.amountPerWave);
+		}
+	}
+	r = 1;
+	
+	// Now loop all entrances
+	for (; i < 20; i += 1) {
+		if ( zrEntrances[i].used ) {
+			entrance = zrEntrances[i];
+			tmp = StringToText("");
+			for (; j < 20; j += 1) {
+				if ( entrance.units[j].used ) {
+					tmp += IntToText(entrance.units[j].count) + x + UnitTypeGetName(entrance.units[j].unitType) + n;
+				}
+			}
+			j = 0;
+
+			TextTagCreate(tmp, 24, PointFromName(entrance.entrance + "/Ping"), 1, true, false, PlayerGroupAll());
+		}
+	}
+	
+	// now we need to make a timer and destroy all the text tags WE NEED TO SAVE THEM HOLY FUCK
+	// mapping text tag to ping point as well, what the hell
+}
+
+static int zrSecretStageDialog = -1;
+static int zrSecretStartWaveButton = -1;
+static int zrButtonShownForIndex = -1;
+
+static void zrStageActuallyStart(zrStage stage) {
+	stage.runner = TriggerCreate("zrCoreHandleWaves");
+	stage.startedAt = GameGetMissionTime();
+	TriggerAddEventTimePeriodic(stage.runner, 1, c_timeGame);
+}
+
+// need to handle ForceStartNextStage
+
+bool zrHandleNextWaveButtonClick(bool check, bool run) {
+	int ctrl = EventDialogControl();
+	if ( check && ctrl != zrSecretStartWaveButton ) { return false; }
+	if ( !run ) { return true; }
+	
+	DialogSetVisible(zrSecretStageDialog, PlayerGroupAll(), false);
+	zrdbg("Click", "CLICKED NEXT WAVE BUTTON!");
+
+	if ( !zrStages[zrButtonShownForIndex].used ) {
+		zrdbg("Stage", "Got button click to start stage that is not used.");
+		return false;
+	}
+	if ( zrStages[zrButtonShownForIndex].startedAt != 0 ) {
+		zrdbg("Stage", "Got button click for stage that is already running or over.");
+		return false;
+	}
+	// Show pings
+	zrStagePing(zrStages[zrButtonShownForIndex]);
+	
+	// Announce
+	zrStageAnnounce(zrStages[zrButtonShownForIndex]);
+	
+	// Actually start
+	zrStageActuallyStart(zrStages[zrButtonShownForIndex]);
+	
+	zrStageEvent(ZRE_STAGE_STARTED, zrButtonShownForIndex);
+
+	// xxx  Should do vote system lulz
+	return true;
+}
+
+static void zrStageShowButton(zrStage stage) {
+	zrdbg("Show", "Actually want to show button for stage " + IntToString(stage.index));
+		zrdbg("Test", "GameIsTestMap " + IntToString(BoolToInt(GameIsTestMap(true))) + "/" + IntToString(BoolToInt(GameIsTestMap(false))));
+	
+	zrdbg("Test", "Terrain set " + GameTerrainSet());
+
+	if ( zrSecretStageDialog == -1 ) {
+		zrSecretStageDialog = DialogCreate(120, 60, c_anchorTopLeft, 10, 10, false);
+		zrSecretStartWaveButton = DialogControlCreate(DialogLastCreated(), c_triggerControlTypeButton);
+		DialogControlSetSize(zrSecretStartWaveButton, PlayerGroupAll(), 100, 40);
+		DialogControlSetVisible(zrSecretStartWaveButton, PlayerGroupAll(), true);
+		DialogControlSetPropertyAsText(zrSecretStartWaveButton, c_triggerControlPropertyText, PlayerGroupAll(), StringToText("NEXT WAVE PLZ"));
+		TriggerAddEventDialogControl(TriggerCreate("zrHandleNextWaveButtonClick"), c_playerAny, zrSecretStartWaveButton, c_triggerControlEventTypeClick);
+	} else {
+		if ( DialogIsVisible(zrSecretStageDialog, 1) ) {
+			zrdbg("Show", "But button is already visible?!");
+			return;
+		}
+	}
+	zrButtonShownForIndex = stage.index;
+	DialogSetVisible(zrSecretStageDialog, PlayerGroupAll(), true);
+}
+
+// XXX
+// Since this is never called from the core, only by the map maker
+// We should hide all current warnings and show new ones for this wave.
+bool ShowWaveButton() {
+	int i = 1;
+	if ( zrSecretStageDialog != -1 && DialogIsVisible(zrSecretStageDialog, 1) ) { return false; }
+	for (; i <= 20; i += 1) {
+		if ( zrStages[i].used && zrStages[i].startedAt == 0 ) {
+			zrStageShowButton(zrStages[i]);
+			return true;
+		}
+	}
+	return false;
+}
+
+static void zrWavesDoSpawn(zrWave w) {
+	// move via waypoints if they exist
+	UnitCreate(w.amountPerWave, w.unitType, c_unitCreateIgnorePlacement, 15, w.entrancePoint, 270);
+	UnitGroupIssueOrder(UnitLastCreatedGroup(), OrderTargetingPoint(zr_CmdMove, w.exitPoint), c_orderQueueReplace);
+}
+
+// Run every second of game time while a stage is active
+// When there's no stage active, this should never run.
+bool zrCoreHandleWaves(bool check, bool run) {
+	fixed currentTime = GameGetMissionTime();
+	int i = 1; // user tables start at 1
+	zrStage stage;
+	zrWave w;
+	if ( !run ) { return true; }
+
+	// Find the stage for this trigger
+	for (; i <= 20; i += 1) {
+		if ( zrStages[i].runner == TriggerGetCurrent() ) {
+			stage = zrStages[i];
+			break;
+		}
+	}
+	if ( ! stage.used ) {
+		zrdbg("Horrible", "Something is horribly wrong here. The running stage doesnt exist.");
+		return false;
+	}
+	i = 1;
+	
+	stage.totalDuration -= 1;
+
+	// If there's less than X seconds left
+	if ( !stage.warnedNext && stage.totalDuration <= ZR_WAVE_TIME_ADD ) {
+		stage.warnedNext = true;
+		// And the next stage has not been started already
+		// Show the button, XXX will error at the last wave
+		if ( zrStages[stage.index + 1].startedAt == 0 ) {
+			// Next stage has not been started. Show the button and text tags.
+			
+			zrStageDisplayCounts(zrStages[stage.index + 1]); // Text tags
+			
+			zrStageShowButton(zrStages[stage.index + 1]); // Button(s)
+		}
+	}
+
+	// Current time since stage started
+	currentTime = currentTime - stage.startedAt;
+
+	for (; i <= 20; i += 1) {
+		w = stage.waves[i];
+		if ( w.startTime > 0 && w.waveCount > 0 ) {
+			if ( ! w.started && ( currentTime >= w.startTime ) ) {
+				//zrdbg("Waves", "Starting wave " + w.unitType + " at " + FixedToString(w.startTime, c_fixedPrecisionAny));
+				w.started = true;
+				w.nextSpawnTime = currentTime;
+			}
+			if ( w.started && currentTime >= w.nextSpawnTime ) {
+				// Spawn units
+				zrWavesDoSpawn(w);
+				//zrdbg("Waves", "Time is " + FixedToString(currentTime, c_fixedPrecisionAny) + ", spawning " + w.unitType);
+				w.waveCount -= 1;
+				w.nextSpawnTime = currentTime + w.timeBetween;
+			}
+		}
+	}
+
+	// This stage is done.
+	if ( stage.totalDuration <= 0 ) {
+		// forcefully start next stage
+		zrStageEvent(ZRE_STAGE_FINISHED, stage.index);
+		TriggerStop(stage.runner);
+		TriggerDestroy(stage.runner);
+		return true;
+	}
+	
+	return true;
+}
+
+static point zrWavesGetEntrance(string entrance) {
+	point x = PointFromName(entrance);
+	if ( x == null && entrance != "" ) {
+		x = RegionGetCenter(RegionFromName(entrance));
+	}
+	if ( x == null ) {
+		x = PointFromName("Entrance");
+	}
+	if ( x == null ) {
+		x = RegionGetCenter(RegionFromName("Entrance"));
+	}
+	if ( x == null ) {
+		// xxx show proper warning, not just debug
+		zrdbg("Waves", "Found no entrance.");
+	}
+	return x;
+}
+
+static point zrWavesGetExit(string exit) {
+	point x = PointFromName(exit);
+	if ( x == null && exit != "" ) {
+		x = RegionGetCenter(RegionFromName(exit));
+	}
+	if ( x == null ) {
+		x = PointFromName("Exit");
+	}
+	if ( x == null ) {
+		x = RegionGetCenter(RegionFromName("Exit"));
+	}
+	if ( x == null ) {
+		// xxx show proper warning, not just debug
+		zrdbg("Waves", "Found no exit.");
+	}
+	return x;
+}
+
+// This parses all the waves in a stage.
+static void zrWavesParseStage(zrStage stage, string token, int count) {
+	zrWave w;
+	int i = 1; // user tables start at 1
+	string sInt;
+
+	stage.used = true;
+	stage.totalDuration = ZR_WAVE_TIME_ADD;
+
+	// xxx warn if more than 20
+	for (; i <= count; i += 1) {
+		sInt = IntToString(i);
+		w = stage.waves[i];
+
+		w.started = false;
+		w.used = true;
+
+		w.unitType = UserDataGetUnit(token, sInt, zrField_WaveUnit, 1);
+		w.startTime = UserDataGetFixed(token, sInt, zrField_WaveStartTime, 1);
+		w.waveCount = UserDataGetInt(token, sInt, zrField_WaveCount, 1);
+		w.timeBetween = UserDataGetFixed(token, sInt, zrField_WaveTimeBetween, 1);
+		w.amountPerWave = UserDataGetInt(token, sInt, zrField_WaveAmount, 1);
+
+		// xxx these two cant contain the character "|", check this.
+		w.entrance = UserDataGetString(token, sInt, zrField_WaveEntrance, 1);
+		w.exit = UserDataGetString(token, sInt, zrField_WaveExit, 1);
+
+		w.entrancePoint = zrWavesGetEntrance(w.entrance);
+		w.exitPoint = zrWavesGetExit(w.exit);
+
+		stage.totalDuration += w.timeBetween * w.waveCount;
+	}
+	i = 1;
+	for (; i <= count; i += 1) {
+		if ( stage.waves[i].startTime > stage.totalDuration ) {
+			stage.totalDuration = stage.waves[i].startTime;
+		}
+	}
+	
+	//zrdbg("Stage", "Parsed " + IntToString(count) + " waves for stage " + token + ", total time is " + FixedToString(stage.totalDuration, c_fixedPrecisionAny));
+}
+
+bool zrWaveHandleStageFinished(bool check, bool run) {
+	int index = EventStageIndex();
+	if ( check && index == -1 ) { return false; }
+	if ( !run ) { return true; }
+
+	// XXX
+	// Start countdown timer, start next stage automatically
+	zrdbg("Waves", "Should start next wave in X seconds automatically, but wont yet.");
+	return true;
+}
+
+void zrWavesInit() {
+	int waveN = 1;
+	string token = "Wave" + IntToString(waveN);
+	int count = UserDataInstanceCount(token);
+
+	zrWaveFlavour[0] = "Are you prepared?";
+	zrWaveFlavour[1] = "Don't run screaming to mommy.";
+	zrWaveFlavour[2] = "This is just what the doctor ordered.";
+	zrWaveFlavour[3] = "Anything less would be an insult!";
+	zrWaveFlavour[4] = "Bring in on, chump.";
+	zrWaveFlavour[5] = "Yes, those are shrimp. Shrimps come in all shapes and sizes.";
+	zrWaveFlavour[6] = "Can you handle the pressure?";
+	zrWaveFlavour[7] = "It's over 9000!";
+	zrWaveFlavour[8] = "Chuck Norris would handle it. Will you?";
+	zrWaveFlavour[9] = "Please. See if I care.";
+	zrWaveFlavour[10] = "That is the sound of inevitability. It is the sound of your death.";
+	zrWaveFlavour[11] = "They will be here by nightfall.";
+	zrWaveFlavour[12] = "Go now and die in what way seems best for you.";
+	zrWaveFlavour[13] = "We're coming to get you, Barbara!";
+	zrWaveFlavour[14] = "Here's Johnny!";
+	zrWaveFlavour[15] = "You are no match for the armies of evil. Give up. Please?";
+	zrWaveFlavour[16] = "Excuse me, are you still here? Gah!";
+	zrWaveFlavour[17] = "I wish you'd roll over and DIE!";
+	zrWaveFlavour[18] = "There's nothing for you here. Leave us alone!";
+	zrWaveFlavour[19] = "I dream of a world free of you.";
+
+	// xxx warn if more than 20
+	// Outer loop traverses each individual table, which is one wave.
+	while ( count > 0 ) {
+		zrWavesParseStage(zrStages[waveN], token, count);
+		zrStages[waveN].index = waveN;
+		zrWavesNumStages = waveN;
+		waveN += 1;
+		token = "Wave" + IntToString(waveN);
+		count = UserDataInstanceCount(token);
+	}
+
+	TriggerAddEventGeneric(TriggerCreate("zrWaveHandleStageFinished"), ZRE_STAGE_FINISHED);
+}

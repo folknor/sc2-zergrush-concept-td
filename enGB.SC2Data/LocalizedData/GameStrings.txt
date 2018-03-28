@@ -1,0 +1,14 @@
+Abil/Name/Blocker=Blocker
+Behavior/Name/ArmorBonus=Armor Bonus
+Behavior/Name/AttackBonus=Attack Bonus
+Behavior/Name/AttackSpeedBonus=Attack Speed Bonus
+Behavior/Name/CasterBuff=Caster Buff
+Behavior/Name/HideOnMinimap2=Hide On Minimap
+Behavior/Name/RangeBonus=Range Bonus
+Behavior/Name/TargetBuff=Target Buff
+DocInfo/DescLong=Place down defensive structures to kill the incoming Zerg waves.
+DocInfo/DescShort=1	
+DocInfo/Name=Zerg Rush	
+MapInfo/Player00/Name=Neutral
+MapInfo/Player01/Name=Player 1
+MapInfo/Player02/Name=Hostile

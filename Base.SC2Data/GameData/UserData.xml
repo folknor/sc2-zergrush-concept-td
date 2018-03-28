@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="us-ascii"?>
+<Catalog>
+    <CUser id="Wave1">
+        <Fields Id="Unit" Type="Unit" EditorColumn="1"/>
+        <Fields Id="Amount" Type="Int" EditorColumn="2"/>
+        <Fields Id="Start" Type="Fixed" EditorColumn="3"/>
+        <Fields Id="Waves" Type="Int" EditorColumn="4"/>
+        <Fields Id="Time Between" Type="Fixed" EditorColumn="5"/>
+        <Fields Id="Entrance" Type="String" EditorColumn="6"/>
+        <Fields Id="Exit" Type="String" EditorColumn="7"/>
+        <Instances Id="[Default]"/>
+        <Instances Id="1">
+            <Fixed Fixed="1">
+                <Field Id="Start"/>
+            </Fixed>
+            <Fixed Fixed="20">
+                <Field Id="Time Between"/>
+            </Fixed>
+            <Int Int="8">
+                <Field Id="Amount"/>
+            </Int>
+            <Int Int="3">
+                <Field Id="Waves"/>
+            </Int>
+            <String String="Entrance 1">
+                <Field Id="Entrance"/>
+            </String>
+            <Unit Unit="Drone">
+                <Field Id="Unit"/>
+            </Unit>
+        </Instances>
+        <Instances Id="2">
+            <Fixed Fixed="28">
+                <Field Id="Start"/>
+            </Fixed>
+            <Fixed Fixed="7">
+                <Field Id="Time Between"/>
+            </Fixed>
+            <Int Int="3">
+                <Field Id="Waves"/>
+            </Int>
+            <Int Int="3">
+                <Field Id="Amount"/>
+            </Int>
+            <String String="Entrance 2">
+                <Field Id="Entrance"/>
+            </String>
+            <String String="Exit">
+                <Field Id="Exit"/>
+            </String>
+            <Unit Unit="Hydralisk">
+                <Field Id="Unit"/>
+            </Unit>
+        </Instances>
+    </CUser>
+    <CUser id="Wave2">
+        <Fields Id="Unit" Type="Unit" EditorColumn="1"/>
+        <Fields Id="Amount" Type="Int" EditorColumn="2"/>
+        <Fields Id="Start" Type="Fixed" EditorColumn="3"/>
+        <Fields Id="Waves" Type="Int" EditorColumn="4"/>
+        <Fields Id="Time Between" Type="Fixed" EditorColumn="5"/>
+        <Fields Id="Entrance" Type="String" EditorColumn="6"/>
+        <Fields Id="Exit" Type="String" EditorColumn="7"/>
+        <Instances Id="[Default]"/>
+        <Instances Id="1">
+            <Fixed Fixed="1">
+                <Field Id="Start"/>
+            </Fixed>
+            <Fixed Fixed="14">
+                <Field Id="Time Between"/>
+            </Fixed>
+            <Int Int="8">
+                <Field Id="Amount"/>
+            </Int>
+            <Int Int="4">
+                <Field Id="Waves"/>
+            </Int>
+            <String String="Entrance 1">
+                <Field Id="Entrance"/>
+            </String>
+            <Unit Unit="HotSHunter">
+                <Field Id="Unit"/>
+            </Unit>
+        </Instances>
+        <Instances Id="2">
+            <Fixed Fixed="3">
+                <Field Id="Time Between"/>
+            </Fixed>
+            <Fixed Fixed="20">
+                <Field Id="Start"/>
+            </Fixed>
+            <Int Int="2">
+                <Field Id="Waves"/>
+            </Int>
+            <Int Int="3">
+                <Field Id="Amount"/>
+            </Int>
+            <String String="Entrance 2">
+                <Field Id="Entrance"/>
+            </String>
+            <String String="Exit">
+                <Field Id="Exit"/>
+            </String>
+            <Unit Unit="Pygalisk">
+                <Field Id="Unit"/>
+            </Unit>
+        </Instances>
+    </CUser>
+    <CUser id="Wave3">
+        <Fields Id="Unit" Type="Unit" EditorColumn="1"/>
+        <Fields Id="Amount" Type="Int" EditorColumn="2"/>
+        <Fields Id="Start" Type="Fixed" EditorColumn="3"/>
+        <Fields Id="Waves" Type="Int" EditorColumn="4"/>
+        <Fields Id="Time Between" Type="Fixed" EditorColumn="5"/>
+        <Fields Id="Entrance" Type="String" EditorColumn="6"/>
+        <Fields Id="Exit" Type="String" EditorColumn="7"/>
+        <Instances Id="[Default]"/>
+        <Instances Id="1">
+            <Fixed Fixed="1">
+                <Field Id="Start"/>
+            </Fixed>
+            <Fixed Fixed="8">
+                <Field Id="Time Between"/>
+            </Fixed>
+            <Int Int="8">
+                <Field Id="Amount"/>
+            </Int>
+            <Int Int="3">
+                <Field Id="Waves"/>
+            </Int>
+            <String String="Entrance 1">
+                <Field Id="Entrance"/>
+            </String>
+            <Unit Unit="PrimalRoach">
+                <Field Id="Unit"/>
+            </Unit>
+        </Instances>
+        <Instances Id="2">
+            <Fixed Fixed="5">
+                <Field Id="Start"/>
+            </Fixed>
+            <Fixed Fixed="5">
+                <Field Id="Time Between"/>
+            </Fixed>
+            <Int Int="3">
+                <Field Id="Waves"/>
+            </Int>
+            <Int Int="2">
+                <Field Id="Amount"/>
+            </Int>
+            <String String="Entrance 2">
+                <Field Id="Entrance"/>
+            </String>
+            <String String="Exit">
+                <Field Id="Exit"/>
+            </String>
+            <Unit Unit="HunterKiller">
+                <Field Id="Unit"/>
+            </Unit>
+        </Instances>
+    </CUser>
+    <CUser id="Wave4">
+        <Fields Id="Unit" Type="Unit" EditorColumn="1"/>
+        <Fields Id="Amount" Type="Int" EditorColumn="2"/>
+        <Fields Id="Start" Type="Fixed" EditorColumn="3"/>
+        <Fields Id="Waves" Type="Int" EditorColumn="4"/>
+        <Fields Id="Time Between" Type="Fixed" EditorColumn="5"/>
+        <Fields Id="Entrance" Type="String" EditorColumn="6"/>
+        <Fields Id="Exit" Type="String" EditorColumn="7"/>
+        <Instances Id="[Default]"/>
+        <Instances Id="1">
+            <Fixed Fixed="1">
+                <Field Id="Start"/>
+            </Fixed>
+            <Fixed Fixed="9">
+                <Field Id="Time Between"/>
+            </Fixed>
+            <Int Int="8">
+                <Field Id="Amount"/>
+            </Int>
+            <Int Int="12">
+                <Field Id="Waves"/>
+            </Int>
+            <String String="Entrance 1">
+                <Field Id="Entrance"/>
+            </String>
+            <Unit Unit="InfestedTerran">
+                <Field Id="Unit"/>
+            </Unit>
+        </Instances>
+        <Instances Id="2">
+            <Fixed Fixed="28">
+                <Field Id="Start"/>
+            </Fixed>
+            <Fixed Fixed="20">
+                <Field Id="Time Between"/>
+            </Fixed>
+            <Int Int="2">
+                <Field Id="Waves"/>
+            </Int>
+            <Int Int="3">
+                <Field Id="Amount"/>
+            </Int>
+            <String String="Entrance 2">
+                <Field Id="Entrance"/>
+            </String>
+            <String String="Exit">
+                <Field Id="Exit"/>
+            </String>
+            <Unit Unit="Queen">
+                <Field Id="Unit"/>
+            </Unit>
+        </Instances>
+    </CUser>
+</Catalog>
