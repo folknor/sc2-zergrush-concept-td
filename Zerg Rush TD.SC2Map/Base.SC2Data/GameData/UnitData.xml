@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="us-ascii"?>
+<Catalog>
+    <CUnit id="Marauder">
+        <AbilArray Link="Blocker"/>
+        <CardLayouts index="0">
+            <LayoutButtons Face="Attack" Type="AbilCmd" AbilCmd="Blocker,Execute" Row="2" Column="2"/>
+        </CardLayouts>
+    </CUnit>
+    <CUnit id="Marine">
+        <AbilArray Link="Blocker"/>
+        <CardLayouts index="0">
+            <LayoutButtons Face="MothershipCoreAttack" Type="AbilCmd" AbilCmd="Blocker,Execute" Row="2" Column="2"/>
+        </CardLayouts>
+    </CUnit>
+</Catalog>

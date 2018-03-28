@@ -1,0 +1,598 @@
+// RESERVED UNIT CUSTOM ID RANGE: 30-39
+
+static const string zrBName = "MARINES";
+static const string zrBType = "Level 1 Barracks";
+static const string zrBDesc = "Trains 3 Marines that block and damage your enemies. Try to place them near choke points. Remember that you can change the waypoint for your Barracks by selecting it.";
+static const string zrBStrong = "Marines might be able to take down a few enemies by themselves, but they rely on other adjacent towers for most of the damage.";
+static const string zrBWeak = "Almost every enemy except a Zergling will make short work of your Marines. Some can even kill all 3 with one hit.";
+static const string zrBUpgrades = "Can be upgraded to level 2 Barracks.";
+static const int zrBCost = 70;
+
+static const string zrB2Name = "MARINES";
+static const string zrB2Type = "Level 2 Barracks";
+static const string zrB2Desc = "Tougher, thicker armor. More rounds per magazine.";
+static const string zrB2Strong = "Roaches will no longer kill them that easily.";
+static const string zrB2Weak = "Anything stronger than a Roach.";
+static const string zrB2Upgrades = "Can be upgraded to level 3 Barracks.";
+static const int zrB2Cost = 110;
+
+static const string zrB3Name = "MARINES";
+static const string zrB3Type = "Level 3 Barracks";
+static const string zrB3Desc = "Stim Packs are never a good idea. And yet, here they are.";
+static const string zrB3Strong = "Anything that wants to DIE!";
+static const string zrB3Weak = "Marines with Stim have no weakness.";
+static const string zrB3Upgrades = "Can be upgraded to the Hammer Securities Squad or the Covert Ops.";
+static const int zrB3Cost = 160;
+
+static const string zrB41Name = "HAMMER SECURITIES SQUAD";
+static const string zrB41Type = "Level 4 Barracks";
+static const string zrB41Desc = "2 elite Marauders team up with a Medivac to give you some stopping power on the battlefield.";
+static const string zrB41Strong = "The Marauders can tank even Ultralisks for a few seconds with a little help from their friend above.";
+static const string zrB41Weak = "Swarms of units will run right past them.";
+static const string zrB41Upgrades = "Upgrade the Marauder armor.";
+static const int zrB41Cost = 230;
+
+static const string zrB42Name = "COVERT OPS";
+static const string zrB42Type = "Level 4 Barracks";
+static const string zrB42Desc = "Ghosts are the feared terran covert operatives trained from infancy to serve as commandos and assassins. They have excellent tactical overview of the battlefield and will engage the strongest foes they can find with their sniper rifle.";
+static const string zrB42Strong = "High-powered rifles operated by a permanently cloaked operative. They are strong against everything.";
+static const string zrB42Weak = "Except swarms of small enemies.";
+static const string zrB42Upgrades = "Upgrade the Snipe damage output.";
+static const int zrB42Cost = 230;
+
+static const int BARRACKS_1_ARMOR = 0;
+static const int BARRACKS_2_ARMOR = 2;
+static const int BARRACKS_3_ARMOR = 5;
+static const int BARRACKS_41_ARMOR = 7; // Base marauder armor is 1, so 8
+static const int BARRACKS_42_ARMOR = 5;
+
+static const int BARRACKS_1_LIFE = 45;
+static const int BARRACKS_2_LIFE = 65;
+static const int BARRACKS_3_LIFE = 110;
+static const int BARRACKS_41_LIFE = 250;
+static const int BARRACKS_42_LIFE = 110;
+
+static const int BARRACKS_1_RANGE = 6;
+static const int BARRACKS_2_RANGE = 8;
+static const int BARRACKS_3_RANGE = 9;
+static const int BARRACKS_41_RANGE = 8;
+static const int BARRACKS_42_RANGE = 13;
+
+static const int zrcvBarracksLife = 32;
+static const int zrcvBarracksArmor = 31;
+static const int zrcvBarracksRange = 37;
+
+// B = Barracks
+static int zrBMainButton;
+static int zrB2Button;
+static int zrB3Button;
+static int zrB41Button;
+static int zrB42Button;
+static int zrBWPButton;
+
+static const int BARRACKS_MAX_DISTANCE = 7;
+
+static const int zrcvBarracksId = 34;
+static const int zrcvX = 35;
+static const int zrcvY = 36;
+
+static trigger zrWaypointTarget;
+static trigger zrWaypointClick;
+static trigger zrBarrackStartTrigger;
+static unit zrWaypointUnit;
+//static actor zrWaypointActor;
+static unit currentBarracks;
+static bool zrDoingWP;
+
+// XXX Remember to kill all units when we are destroyed (sold)
+static unit[20] zrAllBarracks; // Index starts at 1
+static int zrNumBarracks;
+
+static unitgroup[20] zrbUnitGroup;
+
+// ============================= WAYPOINT HANDLING
+static void zrdestroywaypoint() {
+	UnitSetState(zrWaypointUnit, c_unitStateHidden, true);
+	TriggerStop(zrWaypointTarget);
+	TriggerStop(zrWaypointClick);
+	TriggerEnable(zrWaypointTarget, false);
+	TriggerEnable(zrWaypointClick, false);
+}
+
+bool zrWaypointHandler(bool check, bool run) {
+	if (!zrDoingWP || zrWaypointUnit == null || currentBarracks == null || UnitTestState(zrWaypointUnit, c_unitStateHidden)) {return true;}
+	if (!run) {return true;}
+	// XXX tint red unpassable etc
+	// http://www.sc2mapster.com/forums/resources/tutorials/4917-triggers-setting-units-colors-by-triggers/
+	//if ( zrWaypointActor == null ) {
+	//	zrWaypointActor = ActorFromScope(ActorScopeFromUnit(zrWaypointUnit), "::Main");
+	//}
+
+	//ActorSend(zrWaypointActor, "::Main"), "SetTintColor {255,255,255 1.0} {0.0}");
+	UnitSetPosition(zrWaypointUnit, Point(EventMouseMovedPosXWorld(), EventMouseMovedPosYWorld()), false);
+	return true;
+}
+bool zrWaypointClickHandler(bool check, bool run) {
+	fixed x;
+	fixed y;
+	point mouse;
+	if ( !zrDoingWP || currentBarracks == null ) { return true; }
+
+	x = EventMouseClickedPosXWorld();
+	y = EventMouseClickedPosYWorld();
+	mouse = Point(x, y);
+
+	if ( check ) {
+		if ( ! PointPathingPassable(mouse) ) {
+			zrdbg("Waypoint", "Place the waypoint on the road!");
+			SoundPlay(SoundLink("Alert_TerranBuildError", -1), zrTowerPlayer, 100.0, 0.0);
+			return false;
+		}
+		if ( DistanceBetweenPoints(mouse, UnitGetPosition(currentBarracks)) > BARRACKS_MAX_DISTANCE ) {
+			zrdbg("Waypoint", "Too far away from Barracks!");
+			SoundPlay(SoundLink("Alert_TerranBuildError", -1), zrTowerPlayer, 100.0, 0.0);
+			return false;
+		}
+	}
+	if ( !run ) { return true; }
+	zrdbg("Waypoint", "In mouse click handler, should probably only be once.");
+
+	UnitSetCustomValue(currentBarracks, zrcvX, x);
+	UnitSetCustomValue(currentBarracks, zrcvY, y);
+
+	zrDoingWP = false;
+	SoundPlay(SoundLink("Terran_BuildingPlacementSmall", -1), zrTowerPlayer, 100.0, 0.0);
+
+	UnitGroupLoopBegin(zrbUnitGroup[FixedToInt(UnitGetCustomValue(currentBarracks, zrcvBarracksId))]);
+	while ( ! UnitGroupLoopDone() ) {
+		UnitIssueOrder(UnitGroupLoopCurrent(), OrderTargetingPoint(zr_CmdMove, RegionRandomPoint(RegionCircle(mouse, 1.5))), c_orderQueueAddToFront);
+		UnitGroupLoopStep();
+	}
+	UnitGroupLoopEnd();
+
+	zrdestroywaypoint();
+	return true;
+}
+
+static void zr_SetBarracksWaypoint(unit barracks) {
+	if ( zrWaypointUnit == null ) {
+		UnitCreate(1, "Beacon_TerranSmall", c_unitCreateIgnorePlacement, ZR_TOWER_PLAYER_ID, UnitGetPosition(barracks), 0);
+		zrWaypointUnit = UnitLastCreated();
+	}
+	zrDoingWP = true;
+	UnitSetState(zrWaypointUnit, c_unitStateHidden, false);
+	currentBarracks = barracks;
+	if ( zrWaypointTarget == null ) {
+		zrWaypointTarget = TriggerCreate("zrWaypointHandler");
+		zrWaypointClick = TriggerCreate("zrWaypointClickHandler");
+		TriggerAddEventMouseMoved(zrWaypointTarget, ZR_TOWER_PLAYER_ID);
+		TriggerAddEventMouseClicked(zrWaypointClick, ZR_TOWER_PLAYER_ID, c_mouseButtonLeft, true);
+	} else {
+		TriggerEnable(zrWaypointTarget, true);
+		TriggerEnable(zrWaypointClick, true);
+	}
+}
+
+// =============== SPAWN UNIT STUFF
+
+// =============== BARRACKS IMPL
+
+static point zrbGetClosestWaypoint(unit barracks) {
+	point wp = PointFromName("Barracks Waypoint 1");
+	point bp = UnitGetPosition(barracks);
+	fixed distance = DistanceBetweenPoints(wp, bp);
+	fixed tmpDistance;
+	point closest = wp;
+	int nextWp = 2;
+
+	while ( true ) {
+		wp = PointFromName("Barracks Waypoint " + IntToString(nextWp));
+		if ( wp ) {
+			tmpDistance = DistanceBetweenPoints(wp, bp);
+			if ( tmpDistance < distance ) {
+				distance = tmpDistance;
+				closest = wp;
+			}
+			nextWp += 1;
+		} else {
+			break;
+		}
+	}
+	return closest;
+}
+
+// Called on creation
+// We always start out at level 1.
+static void zrTowerInit_Barracks(unit barracks, fixed id) {
+	int i;
+	point wp = zrbGetClosestWaypoint(barracks);
+	region tmpRegion = RegionCircle(wp, 1.5);
+	unit marine;
+	int fuckingFixedIdCrap = FixedToInt(id);
+
+	UnitSetCustomValue(barracks, zrcvX, PointGetX(wp));
+	UnitSetCustomValue(barracks, zrcvY, PointGetY(wp));
+	UnitSetCustomValue(barracks, zrcvBarracksArmor, BARRACKS_1_ARMOR);
+	UnitSetCustomValue(barracks, zrcvBarracksLife, BARRACKS_1_LIFE);
+	UnitSetCustomValue(barracks, zrcvBarracksRange, BARRACKS_1_RANGE);
+
+	UnitSetScale(barracks, 60.0, 60.0, 60.0);
+
+	// Train 0=marine,2=ghost,3=marauder
+	for (; i < 3; i += 1) {
+		UnitCreate(1, "Marine", c_unitCreateIgnorePlacement, ZR_TOWER_PLAYER_ID, UnitGetPosition(barracks), 270);
+		marine = UnitLastCreated();
+		UnitSetCustomValue(marine, zrcvBarracksId, id);
+		UnitBehaviorAddPlayer(marine, "PermanentlyUncommandable", ZR_TOWER_PLAYER_ID, 1);
+		UnitSetPropertyInt(marine, c_unitPropLife, BARRACKS_1_LIFE);
+		UnitSetPropertyInt(marine, c_unitPropLifeMax, BARRACKS_1_LIFE);
+		UnitBehaviorAddPlayer(marine, "ArmorBonus", ZR_TOWER_PLAYER_ID, BARRACKS_1_ARMOR);
+		UnitBehaviorAddPlayer(marine, "RangeBonus", ZR_TOWER_PLAYER_ID, BARRACKS_1_RANGE - 5); // Add the buff X-5 for default range
+		UnitGroupAdd(zrbUnitGroup[fuckingFixedIdCrap], marine);
+		UnitIssueOrder(marine, OrderTargetingPoint(zr_CmdMove, RegionRandomPoint(tmpRegion)), c_orderQueueReplace);
+	}
+}
+
+// Called only one time from unitcreated handler.
+static void zr_BarracksUnitCreated(unit barracks, unit fodder) {
+	fixed life = UnitGetCustomValue(barracks, zrcvBarracksLife);
+	fixed armor = UnitGetCustomValue(barracks, zrcvBarracksArmor);
+	fixed range = UnitGetCustomValue(barracks, zrcvBarracksRange);
+	fixed id = UnitGetCustomValue(barracks, zrcvBarracksId);
+	// XXX need to handle different types
+
+	UnitSetCustomValue(fodder, zrcvBarracksId, id);
+
+	UnitBehaviorAddPlayer(fodder, "PermanentlyUncommandable", ZR_TOWER_PLAYER_ID, 1);
+	UnitSetPropertyFixed(fodder, c_unitPropLife, life);
+	UnitSetPropertyFixed(fodder, c_unitPropLifeMax, life);
+	UnitBehaviorAddPlayer(fodder, "ArmorBonus", ZR_TOWER_PLAYER_ID, FixedToInt(armor));
+	UnitBehaviorAddPlayer(fodder, "MarineRangeBuff", ZR_TOWER_PLAYER_ID, FixedToInt(range) - 5); // Add the buff X-5 for default range
+	UnitGroupAdd(zrbUnitGroup[FixedToInt(id)], fodder);
+
+	// Lawl at the func calls here. GG.
+	UnitIssueOrder(fodder, OrderTargetingPoint(zr_CmdMove, RegionRandomPoint(RegionCircle(Point(UnitGetCustomValue(barracks, zrcvX), UnitGetCustomValue(barracks, zrcvY)), 1.5))), c_orderQueueReplace);
+}
+
+static void zrbUpgradeUnits(unit barracks) {
+	fixed life = UnitGetCustomValue(barracks, zrcvBarracksLife);
+	fixed armor = UnitGetCustomValue(barracks, zrcvBarracksArmor);
+	fixed range = UnitGetCustomValue(barracks, zrcvBarracksRange);
+	unit fodder;
+	fixed id = UnitGetCustomValue(barracks, zrcvBarracksId);
+
+	UnitGroupLoopBegin(zrbUnitGroup[FixedToInt(id)]);
+	while ( ! UnitGroupLoopDone() ) {
+		fodder = UnitGroupLoopCurrent();
+
+		UnitSetCustomValue(fodder, zrcvBarracksId, id);
+
+		UnitBehaviorRemovePlayer(fodder, "ArmorBonus", 1, c_unitBehaviorCountAll);
+		UnitBehaviorRemovePlayer(fodder, "MarineRangeBuff", 1, c_unitBehaviorCountAll);
+
+		UnitBehaviorAddPlayer(fodder, "PermanentlyUncommandable", ZR_TOWER_PLAYER_ID, 1); // Can we add it twice?
+		UnitSetPropertyFixed(fodder, c_unitPropLife, life);
+		UnitSetPropertyFixed(fodder, c_unitPropLifeMax, life);
+		UnitBehaviorAddPlayer(fodder, "ArmorBonus", ZR_TOWER_PLAYER_ID, FixedToInt(armor));
+		UnitBehaviorAddPlayer(fodder, "MarineRangeBuff", ZR_TOWER_PLAYER_ID, FixedToInt(range) - 5); // Add the buff X-5 for default range
+
+		UnitGroupLoopStep();
+	}
+	UnitGroupLoopEnd();
+
+}
+
+static void zrbUpgradeToLevel2(unit barracks) {
+	UnitSetCustomValue(barracks, zrcvBarracksArmor, BARRACKS_2_ARMOR);
+	UnitSetCustomValue(barracks, zrcvBarracksLife, BARRACKS_2_LIFE);
+	UnitSetCustomValue(barracks, zrcvBarracksRange, BARRACKS_2_RANGE);
+	UnitSetCustomValue(barracks, CUSTOM_TOWER_LEVEL, 2);
+	UnitSetScale(barracks, 80.0, 80.0, 80.0);
+	zrbUpgradeUnits(barracks);
+}
+static void zrbUpgradeToLevel3(unit barracks) {
+	UnitSetCustomValue(barracks, zrcvBarracksArmor, BARRACKS_3_ARMOR);
+	UnitSetCustomValue(barracks, zrcvBarracksLife, BARRACKS_3_LIFE);
+	UnitSetCustomValue(barracks, zrcvBarracksRange, BARRACKS_3_RANGE);
+	UnitSetCustomValue(barracks, CUSTOM_TOWER_LEVEL, 3);
+	UnitSetScale(barracks, 100.0, 100.0, 100.0);
+	zrbUpgradeUnits(barracks);
+}
+
+static void zrbUpgradeToLevel41(unit barracks) {
+	int id = FixedToInt(UnitGetCustomValue(barracks, zrcvBarracksId));
+	region wp = RegionCircle(Point(UnitGetCustomValue(barracks, zrcvX), UnitGetCustomValue(barracks, zrcvY)), 1.5);
+	unit marauder;
+	unit medivac;
+
+	UnitSetCustomValue(barracks, zrcvBarracksArmor, BARRACKS_41_ARMOR);
+	UnitSetCustomValue(barracks, zrcvBarracksLife, BARRACKS_41_LIFE);
+	UnitSetCustomValue(barracks, zrcvBarracksRange, BARRACKS_41_RANGE);
+	UnitSetCustomValue(barracks, CUSTOM_TOWER_LEVEL, 4);
+	UnitGroupLoopBegin(zrbUnitGroup[id]);
+
+	// XXX this does not work placementwise and looks like crap anyway
+	// give cool barracks model plz, want to use merc compound but add dep just for that? zzz
+	//UnitCreate(1, "BarracksTechLab", 0, ZR_TOWER_PLAYER_ID, UnitGetPosition(barracks), 0);
+	// This doesnt work but there is a MercCompound.m3 model in the data without swarm campaign even
+	ActorSend(libNtve_gf_MainActorofUnit(barracks), "ModelSwap {MercCompound}");
+
+	while ( ! UnitGroupLoopDone() ) {
+		UnitRemove(UnitGroupLoopCurrent());
+		UnitGroupRemove(zrbUnitGroup[id], UnitGroupLoopCurrent());
+		UnitGroupLoopStep();
+	}
+	UnitGroupLoopEnd();
+
+	UnitCreate(1, "Marauder", c_unitCreateIgnorePlacement, ZR_TOWER_PLAYER_ID, UnitGetPosition(barracks), 270);
+	marauder = UnitLastCreated();
+	UnitGroupAdd(zrbUnitGroup[id], marauder);
+	UnitIssueOrder(marauder, OrderTargetingPoint(zr_CmdMove, RegionRandomPoint(wp)), c_orderQueueReplace);
+
+	UnitCreate(1, "Medivac", c_unitCreateIgnorePlacement, ZR_TOWER_PLAYER_ID, UnitGetPosition(barracks), 270);
+	medivac = UnitLastCreated();
+	UnitGroupAdd(zrbUnitGroup[id], medivac);
+	UnitIssueOrder(medivac, OrderTargetingPoint(zr_CmdMove, RegionRandomPoint(wp)), c_orderQueueReplace);
+	UnitSetState(medivac, c_unitStateInvulnerable, true);
+	UnitSetScale(medivac, 60.0, 60.0, 60.0);
+
+	UnitCreate(1, "Marauder", c_unitCreateIgnorePlacement, ZR_TOWER_PLAYER_ID, UnitGetPosition(barracks), 270);
+	marauder = UnitLastCreated();
+	UnitGroupAdd(zrbUnitGroup[id], marauder);
+	UnitIssueOrder(marauder, OrderTargetingPoint(zr_CmdMove, RegionRandomPoint(wp)), c_orderQueueReplace);
+
+	//UnitCreate(1, "Medivac", c_unitCreateIgnorePlacement, ZR_TOWER_PLAYER_ID, UnitGetPosition(barracks), 270);
+	//medivac = UnitLastCreated();
+	//UnitGroupAdd(zrbUnitGroup[id], medivac);
+	//UnitIssueOrder(medivac, OrderTargetingPoint(zr_CmdMove, RegionRandomPoint(wp)), c_orderQueueReplace);
+	//UnitSetState(medivac, c_unitStateInvulnerable, true);
+	//UnitSetScale(medivac, 60.0, 60.0, 60.0);
+
+	zrbUpgradeUnits(barracks);
+}
+
+static void zrbUpgradeToLevel42(unit barracks) {
+	int id = FixedToInt(UnitGetCustomValue(barracks, zrcvBarracksId));
+	region wp = RegionCircle(Point(UnitGetCustomValue(barracks, zrcvX), UnitGetCustomValue(barracks, zrcvY)), 1.5);
+	unitgroup newUnits;
+
+	UnitSetCustomValue(barracks, zrcvBarracksArmor, BARRACKS_42_ARMOR);
+	UnitSetCustomValue(barracks, zrcvBarracksLife, BARRACKS_42_LIFE);
+	UnitSetCustomValue(barracks, zrcvBarracksRange, BARRACKS_42_RANGE);
+	UnitSetCustomValue(barracks, CUSTOM_TOWER_LEVEL, 4);
+	UnitGroupLoopBegin(zrbUnitGroup[id]);
+	while ( ! UnitGroupLoopDone() ) {
+		UnitRemove(UnitGroupLoopCurrent());
+		UnitGroupRemove(zrbUnitGroup[id], UnitGroupLoopCurrent());
+		UnitGroupLoopStep();
+	}
+	UnitGroupLoopEnd();
+
+	ActorSend(libNtve_gf_MainActorofUnit(barracks), "ModelSwap {GhostAcademy}");
+
+	UnitCreate(3, "Ghost", c_unitCreateIgnorePlacement, ZR_TOWER_PLAYER_ID, UnitGetPosition(barracks), 270);
+	newUnits = UnitLastCreatedGroup();
+	UnitGroupAddUnitGroup(zrbUnitGroup[id], newUnits);
+	UnitGroupIssueOrder(newUnits, OrderTargetingPoint(zr_CmdMove, RegionRandomPoint(wp)), c_orderQueueReplace);
+
+	zrbUpgradeUnits(barracks);
+}
+
+// unitIndex is the index on the abilitycommand
+static void zr_BarracksSpawn(unit barracks, string unitType) {
+	if ( unitType == "Marine" ) {
+		UnitIssueOrder(barracks, Order(AbilityCommand("BarracksTrain", 0)), c_orderQueueAddToEnd);
+	} else if ( unitType == "Marauder" ) {
+		UnitIssueOrder(barracks, Order(AbilityCommand("BarracksTrain", 3)), c_orderQueueAddToEnd);
+	} else if ( unitType == "Ghost" ) {
+		UnitIssueOrder(barracks, Order(AbilityCommand("BarracksTrain", 2)), c_orderQueueAddToEnd);
+	}
+}
+
+bool zrBarracksHandleUnitCreated(bool testConds, bool runActions) {
+	unit created = EventUnitCreatedUnit();
+	int owner = UnitGetOwner(created);
+	string type = UnitGetType(created);
+	string ability;
+	// Conditions
+	if (testConds) {
+		if ( type == "Beacon_TerranSmall" ) {
+			return false;
+		}
+		if ( owner != 1 ) {
+			return false;
+		}
+	}
+	// Actions
+	if (!runActions) { return true; }
+
+	if ( type == "Barracks" ) {
+		zrNumBarracks += 1;
+		zrbUnitGroup[zrNumBarracks] = UnitGroupEmpty();
+		UnitSetCustomValue(created, zrcvBarracksId, IntToFixed(zrNumBarracks));
+		zrAllBarracks[zrNumBarracks] = created;
+		zrTowerInit_Barracks(created, IntToFixed(zrNumBarracks));
+	} else {
+		ability = EventUnitCreatedAbil(); // Need to check this so it doesnt trigger from UnitCreate
+		if ( ability != "" && ability == "BarracksTrain" && UnitGetType(EventUnit()) == "Barracks" ) {
+			UnitBehaviorAddPlayer(created, "ReaperRegen", ZR_TOWER_PLAYER_ID, 1);
+			zr_BarracksUnitCreated(EventUnit(), created);
+		}
+	}
+
+	return true;
+}
+
+bool zrBarracksHandleUnitAttacked(bool check, bool run) {
+	unit target = EventUnit();
+	unit attacker = EventUnitTarget();
+	if ( check ) {
+		if ( UnitGetOwner(attacker) != 1 || UnitGetOwner(target) != 15 ) {
+			return false;
+		}
+		if ( UnitTestState(attacker, c_unitStateInvulnerable) ) {
+			return false;
+		}
+		//if ( ! UnitCanAttackTarget(target, attacker) ) {
+			// XXX CanAttack checks range? If so we cant use it
+			//return false;
+		//}
+		// order 1 is move command from start to exit
+		if ( UnitOrderCount(target) != 1 ) {
+			return false;
+		}
+	}
+	if (!run) { return true; }
+
+	UnitIssueOrder(target, OrderTargetingUnit(AbilityCommand("attack", 0), attacker), c_orderQueueAddToFront);
+	return true;
+}
+
+bool zrBarracksHandleUnitDied(bool check, bool run) {
+	// XXXX We need to check units from owner 15 and remove the Target buff
+	unit dead = EventUnit();
+	string type = UnitGetType(dead);
+	int tmp;
+	if ( check && UnitGetOwner(dead) != 1 ) { return false; }
+	if (!run) { return true; }
+
+	// It's very simple here, we just recreate whatever died.
+	// And when the barracks is created/upgraded we:
+	// 1. Clear the order queue and cancel active build order, if any
+	// 2. Check to see what units are alive from this barracks
+	// 3. UnitRemove those units (XXX does that trigger UnitDied?!)
+	// 4. Create the units for this barracks
+
+	if ( type == "Marine" || type == "Marauder" || type == "Ghost" || type == "Medivac" || type == "Medic" ) {
+		tmp = FixedToInt(UnitGetCustomValue(dead, zrcvBarracksId));
+		// XXX Does this ever fail?
+		UnitGroupRemove(zrbUnitGroup[tmp], dead);
+		zr_BarracksSpawn(zrAllBarracks[tmp], type);
+	}
+	return true;
+}
+
+bool zrBarracksHandleButton(bool check, bool run) {
+	int control = EventDialogControl();
+	if (!run) { return true; }
+
+	if ( control == zrBMainButton ) {
+		zrCoreTryCreateTower(control, zrBCost);
+	} else if ( control == zrB2Button ) {
+		if ( zrCoreUpgradeTower(zrCoreSelectedTower, zrB2Cost) ) {
+			zrbUpgradeToLevel2(zrCoreSelectedTower);
+		}
+	} else if ( control == zrB3Button ) {
+		if ( zrCoreUpgradeTower(zrCoreSelectedTower, zrB3Cost) ) {
+			zrbUpgradeToLevel3(zrCoreSelectedTower);
+		}
+	} else if ( control == zrB41Button ) {
+		if ( zrCoreUpgradeTower(zrCoreSelectedTower, zrB41Cost) ) {
+			zrbUpgradeToLevel41(zrCoreSelectedTower);
+		}
+	} else if ( control == zrB42Button ) {
+		if ( zrCoreUpgradeTower(zrCoreSelectedTower, zrB42Cost) ) {
+			zrbUpgradeToLevel42(zrCoreSelectedTower);
+		}
+	} else if ( control == zrBWPButton ) {
+		zr_SetBarracksWaypoint(zrCoreSelectedTower);
+	}
+	return true;
+}
+
+static const string zrBWPDesc = "<s val=\"ModCenterSize40Bold\"><c val=\"2980b9\">Set Waypoint</c></s><n/><s val=\"ModLeftSize20\">Move your troops somewhere else. Note that if you try placing the waypoint outside of its intended range, it will fail. Also it can only be placed on the road.</s><n/>";
+
+void zrBarracksInit() {
+	string tmp;
+
+	tmp = zrCoreFormatDescription(zrBName, zrBType, zrBDesc, zrBStrong, zrBWeak, zrBUpgrades, zrBCost);
+	zrBMainButton = zrCoreRegisterTowerClass("Barracks", 70, "Barracks", tmp);
+
+	tmp = zrCoreFormatDescription(zrB2Name, zrB2Type, zrB2Desc, zrB2Strong, zrB2Weak, zrB2Upgrades, zrB2Cost);
+	zrB2Button = zrCoreRegisterUpgrade(zrBMainButton, 110, "Upgrade", tmp);
+
+	tmp = zrCoreFormatDescription(zrB3Name, zrB3Type, zrB3Desc, zrB3Strong, zrB3Weak, zrB3Upgrades, zrB3Cost);
+	zrB3Button = zrCoreRegisterUpgrade(zrB2Button, 160, "Upgrade", tmp);
+
+	tmp = zrCoreFormatDescription(zrB41Name, zrB41Type, zrB41Desc, zrB41Strong, zrB41Weak, zrB41Upgrades, zrB41Cost);
+	zrB41Button = zrCoreRegisterUpgrade(zrB3Button, 230, "H-Sec Squad", tmp);
+
+	tmp = zrCoreFormatDescription(zrB42Name, zrB42Type, zrB42Desc, zrB42Strong, zrB42Weak, zrB42Upgrades, zrB42Cost);
+	zrB42Button = zrCoreRegisterUpgrade(zrB3Button, 230, "Covert Ops", tmp);
+
+	// XXX registering the wp button last puts it at the bottom
+	// XXX the API does not guarantee this
+	zrBWPButton = zrCoreRegisterPersistentButton("Barracks", "Waypoint", zrBWPDesc);
+
+	//CatalogFieldValueSet(c_gameCatalogWeapon, "GuassRifle", "Range", 1, IntToString(ZR_LOW_TOWER_RANGE));
+
+	// player, upgrade, level
+	TechTreeUpgradeAddLevel(1, "PersonalCloaking", 1);
+	TechTreeUpgradeAddLevel(1, "MedivacCaduceusReactor", 1);
+	TechTreeUpgradeAddLevel(1, "PunisherGrenades", 1); // marauder slow
+	TechTreeUpgradeAddLevel(1, "Stimpack", 1);
+	TechTreeUpgradeAddLevel(1, "AdvancedHealingAI", 1);
+	TechTreeUpgradeAddLevel(1, "CellularReactors", 1);
+
+	// by default the medivac heal does not target uncommandable units, so remove Uncommandable. rest is default
+	//CatalogFieldValueSet(c_gameCatalogAbil, "MedivacHeal", "TargetFilters[0]", 1, "Biological,Visible;Self,Enemy,Structure,Missile,Dead,Hidden,Invulnerable");
+	// Ground,Armored,Biological,Uncommandable,Visible;Self,Enemy,Structure,Missile,Cloaked,Dead,Hidden,Invulnerable
+
+	// xxx cant set this either ffs blizz gg
+	//CatalogFieldValueSet(c_gameCatalogActor, "Medivac", "StatusBarFlags[2]", 1, "0");
+	//CatalogFieldValueSet(c_gameCatalogActor, "Medivac", "StatusBarFlags[3]", 1, "0");
+
+	CatalogFieldValueSet(c_gameCatalogAbil, "Snipe", "Range[0]", 1, "20"); // xxx
+	CatalogFieldValueSet(c_gameCatalogAbil, "Snipe", "Cost[0].Vital[2]", 1, "0"); // energy cost 0
+	// might be Cost[0].Vital
+	CatalogFieldValueSet(c_gameCatalogAbil, "Snipe", "CastIntroTime[0]", 1, "0"); // Dont wait 0.5sec
+
+	// We need to set these in the data editor gfuckingg blizz wtf
+	//CatalogFieldValueSet(c_gameCatalogAbil, "Snipe", "Flags[2]", 1, "1"); //AutoCast
+	//CatalogFieldValueSet(c_gameCatalogAbil, "Snipe", "Flags[4]", 1, "1"); //AutoCastOn
+	CatalogFieldValueSet(c_gameCatalogAbil, "Snipe", "AutoCastRange", 1, "20");
+	CatalogFieldValueSet(c_gameCatalogAbil, "Snipe", "Cost[0].Cooldown.TimeUse", 1, "10");
+
+	//CatalogFieldValueSet(c_gameCatalogAbil, "Stimpack", "Flags[2]", 1, "1");
+	//CatalogFieldValueSet(c_gameCatalogAbil, "Stimpack", "Flags[4]", 1, "1");
+
+	CatalogFieldValueSet(c_gameCatalogAbil, "GhostCloak", "Cost[0].Vital[2]", 1, "0");
+	//CatalogFieldValueSet(c_gameCatalogAbil, "GhostCloak", "Flags[0]", 1, "1"); // AutoCast
+	//CatalogFieldValueSet(c_gameCatalogAbil, "GhostCloak", "Flags[2]", 1, "1"); // AutoCastOn
+	CatalogFieldValueSet(c_gameCatalogBehavior, "GhostCloak", "Modification.VitalRegenArray[2]", 1, "0"); // periodic energy drain 0
+
+	// Remove tech lab req and stuff for marauder/ghost
+	CatalogFieldValueSet(c_gameCatalogAbil, "BarracksTrain", "InfoArray[2].Button.Requirements", 1, "");
+	CatalogFieldValueSet(c_gameCatalogAbil, "BarracksTrain", "InfoArray[3].Button.Requirements", 1, "");
+
+	CatalogFieldValueSet(c_gameCatalogUnit, "Marine", "LifeRegenRate", 1, "3");
+	CatalogFieldValueSet(c_gameCatalogUnit, "Marauder", "LifeRegenRate", 1, "5");
+	CatalogFieldValueSet(c_gameCatalogUnit, "Ghost", "LifeRegenRate", 1, "3");
+
+	CatalogFieldValueSet(c_gameCatalogUnit, "Marine", "LifeRegenDelay", 1, "2.5");
+	CatalogFieldValueSet(c_gameCatalogUnit, "Marauder", "LifeRegenDelay", 1, "2");
+	CatalogFieldValueSet(c_gameCatalogUnit, "Ghost", "LifeRegenDelay", 1, "5");
+
+	// Set marines, marauders and ghosts to 0/0 cost
+	CatalogFieldValueSet(c_gameCatalogUnit, "Marine", "CostResource[0]", 1, "0");
+	CatalogFieldValueSet(c_gameCatalogUnit, "Marauder", "CostResource[0]", 1, "0");
+	CatalogFieldValueSet(c_gameCatalogUnit, "Marauder", "CostResource[1]", 1, "0"); // Vespene
+	CatalogFieldValueSet(c_gameCatalogUnit, "Ghost", "CostResource[0]", 1, "0");
+	CatalogFieldValueSet(c_gameCatalogUnit, "Ghost", "CostResource[1]", 1, "0");
+
+	// Set repair time to 5 for all types
+	// We add the ReaperRegen behavior to units on creation.
+	CatalogFieldValueSet(c_gameCatalogUnit, "Marine", "RepairTime", 1, "5");
+	CatalogFieldValueSet(c_gameCatalogUnit, "Ghost", "RepairTime", 1, "5");
+	CatalogFieldValueSet(c_gameCatalogUnit, "Marauder", "RepairTime", 1, "5");
+
+	// Set training time to 5sec for all 3
+	CatalogFieldValueSet(c_gameCatalogAbil, "BarracksTrain", "InfoArray[0].Time", 1, "5"); // Marine
+	CatalogFieldValueSet(c_gameCatalogAbil, "BarracksTrain", "InfoArray[2].Time", 1, "5"); // Ghost
+	CatalogFieldValueSet(c_gameCatalogAbil, "BarracksTrain", "InfoArray[3].Time", 1, "5"); // Marauder
+
+	TriggerAddEventUnitAttacked(TriggerCreate("zrBarracksHandleUnitAttacked"), null);
+	TriggerAddEventUnitCreated(TriggerCreate("zrBarracksHandleUnitCreated"), null, null, null);
+	TriggerAddEventUnitDied(TriggerCreate("zrBarracksHandleUnitDied"), null);
+	TriggerAddEventDialogControl(TriggerCreate("zrBarracksHandleButton"), ZR_TOWER_PLAYER_ID, c_invalidDialogControlId, c_triggerControlEventTypeClick);
+}

@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="us-ascii"?>
+<Catalog>
+    <CBehaviorBuff id="ArmorBonus">
+        <InfoFlags index="Hidden" value="1"/>
+        <EditorCategories value="AbilityorEffectType:Units"/>
+        <MaxStackCount value="20"/>
+        <Modification LifeArmorBonus="1"/>
+    </CBehaviorBuff>
+    <CBehaviorBuff id="AttackBonus">
+        <InfoFlags index="Hidden" value="1"/>
+        <EditorCategories value="AbilityorEffectType:Units"/>
+        <MaxStackCount value="20"/>
+        <Modification>
+            <DamageDealtFraction index="Ranged" value="1"/>
+            <DamageDealtFraction index="Splash" value="1"/>
+        </Modification>
+    </CBehaviorBuff>
+    <CBehaviorBuff id="AttackSpeedBonus">
+        <InfoFlags index="Hidden" value="1"/>
+        <EditorCategories value="AbilityorEffectType:Units"/>
+        <MaxStackCount value="20"/>
+        <Modification AttackSpeedMultiplier="2"/>
+    </CBehaviorBuff>
+    <CBehaviorAttribute id="HideOnMinimap2">
+        <EditorCategories value="AbilityorEffectType:Units"/>
+    </CBehaviorAttribute>
+    <CBehaviorBuff id="CasterBuff">
+        <EditorCategories value="AbilityorEffectType:Units"/>
+        <Modification>
+            <AbilLinkDisableArray value="Blocker"/>
+            <DeathResponse Chance="1" Effect="RemoveTargetBuff"/>
+        </Modification>
+        <InfoFlags index="Hidden" value="1"/>
+    </CBehaviorBuff>
+    <CBehaviorBuff id="PsionicShock">
+        <Alignment value="Negative"/>
+        <InfoIcon value="Assets\Textures\btn-ability-protoss-timebomb.dds"/>
+        <EditorCategories value="AbilityorEffectType:Units"/>
+        <Duration value="3"/>
+        <Modification>
+            <ModifyFlags index="DisableAbils" value="1"/>
+            <ModifyFlags index="SuppressMoving" value="1"/>
+            <ModifyFlags index="SuppressTurning" value="1"/>
+        </Modification>
+    </CBehaviorBuff>
+    <CBehaviorBuff id="RangeBonus">
+        <InfoFlags index="Hidden" value="1"/>
+        <EditorCategories value="AbilityorEffectType:Units"/>
+        <MaxStackCount value="20"/>
+        <Modification WeaponRange="1"/>
+    </CBehaviorBuff>
+    <CBehaviorBuff id="TargetBuff">
+        <EditorCategories value="AbilityorEffectType:Units"/>
+        <Modification>
+            <DeathResponse Chance="1" Effect="RemoveCasterBuff"/>
+        </Modification>
+        <InfoFlags index="Hidden" value="1"/>
+    </CBehaviorBuff>
+</Catalog>

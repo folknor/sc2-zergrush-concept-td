@@ -1,0 +1,248 @@
+
+// Populated on init
+static zrCoreButtonInfo zrCoreCancelButton; // ControlDialogItem ID
+static zrCoreButtonInfo zrCoreSellButton;
+static int zrCoreTowerDialogId;
+
+int zrUICreateTowerButton(string lp_buttonText) {
+	int item = DialogControlCreate(zrCoreTowerDialogId, c_triggerControlTypeButton);
+	DialogControlSetSize(item, PlayerGroupAll(), 200, 70);
+	DialogControlSetVisible(item, PlayerGroupAll(), false);
+	DialogControlSetPropertyAsText(item, c_triggerControlPropertyText, PlayerGroupAll(), StringToText(lp_buttonText));
+	return item;
+}
+
+int zrUICreateTowerButtonDesc(string lp_text) {
+	int item = DialogControlCreate(zrCoreTowerDialogId, c_triggerControlTypeLabel);
+	DialogControlSetSize(item, PlayerGroupAll(), 600, 600);
+	DialogControlSetPosition(item, PlayerGroupAll(), c_anchorTopRight, 200, 190);
+	DialogControlSetVisible(item, PlayerGroupAll(), false);
+	DialogControlSetPropertyAsText(item, c_triggerControlPropertyText, PlayerGroupAll(), StringToText(lp_text));
+	return item;
+}
+
+//XXX  Lazy-load this when we need it instead of now where we are GREEDY  ON INIT ZOMG
+static void zrCreateMainDialog() {
+	DialogCreate(500, 400, c_anchorCenter, 0, 0, true);
+	zrCoreTowerDialogId = DialogLastCreated();
+	DialogSetFullscreen(zrCoreTowerDialogId, true);
+	DialogSetVisible(zrCoreTowerDialogId, PlayerGroupAll(), false);
+	DialogSetImageVisible(zrCoreTowerDialogId, false); // Hide background
+}
+
+static void zrCreateCancelButton() {
+	zrCoreCancelButton.button = zrUICreateTowerButton("Cancel");
+	zrCoreCancelButton.description = zrUICreateTowerButtonDesc("<s val=\"ModCenterSize40Bold\"><c val=\"2980b9\">Cancel</c></s><n/><s val=\"ModLeftSize20\">Hide everything and go back to the game!</s><n/>");
+}
+
+static void zrCreateSellButton() {
+	zrCoreSellButton.button = zrUICreateTowerButton("Sell");
+	zrCoreSellButton.description = zrUICreateTowerButtonDesc("<s val=\"ModCenterSize40Bold\"><c val=\"2980b9\">Sell this tower</c></s><n/><s val=\"ModLeftSize20\">Get a 75% refund on the combined cost of buying and upgrading this tower.</s><n/>");
+}
+
+static int zr__numshowing;
+void zr_ShowButton(zrButton button) {
+	zr__numshowing += 1;
+	DialogControlSetPosition(button.button, zrTowerPlayer, c_anchorTopLeft, 400, (100 + (zr__numshowing * 90)));
+	DialogControlSetVisible(button.button, zrTowerPlayer, true);
+}
+
+static int zrCurrentDescriptionShown = -1;
+bool zrShowButtonInfo(bool check, bool run) {
+	int control = EventDialogControl();
+	int tmp;
+	if (check) {
+		if ( DialogControlGetType(control) != c_triggerControlTypeButton ) {
+			return false;
+		}
+	}
+	// Actions
+	if (!run) { return true; }
+
+	if ( control == zrCoreCancelButton.button ) {
+		tmp = zrCoreCancelButton.description;
+	} else if ( control == zrCoreSellButton.button ) {
+		tmp = zrCoreSellButton.description;
+	} else {
+		// Something should be selected, if not we are screwed.
+		tmp = zrCoreRegisteredTowers[control].button.description;
+	}
+
+	if ( zrCurrentDescriptionShown == tmp || tmp < 1 ) { return true; }
+
+	if ( zrCurrentDescriptionShown != -1 ) {
+		DialogControlSetVisible(zrCurrentDescriptionShown, zrTowerPlayer, false);
+	}
+	DialogControlSetVisible(tmp, zrTowerPlayer, true);
+	zrCurrentDescriptionShown = tmp;
+	return true;
+}
+
+static void zrHideTowerDialog(bool deselect) {
+	if ( ! DialogIsVisible(zrCoreTowerDialogId, ZR_TOWER_PLAYER_ID) ) { return; }
+	DialogSetVisible(zrCoreTowerDialogId, zrTowerPlayer, false);
+	CameraLockInput(ZR_TOWER_PLAYER_ID, false);
+	if ( deselect ) {
+		UnitClearSelection(ZR_TOWER_PLAYER_ID);
+	}
+}
+
+static void zrShowTowerDialog() {
+	CameraPan(ZR_TOWER_PLAYER_ID, UnitGetPosition(zrCoreSelectedTower), 2, -1, 10, false); // smart means it doesnt move unles sit has to
+	DialogSetVisible(zrCoreTowerDialogId, zrTowerPlayer, true);
+	CameraLockInput(ZR_TOWER_PLAYER_ID, true);
+}
+
+bool zrCoreHandleButtonClick (bool testConds, bool runActions) {
+	int control = EventDialogControl();
+	if ( testConds && DialogControlGetType(control) != c_triggerControlTypeButton ) {
+		return false;
+	}
+	if (!runActions) { return true; }
+	
+	// We only handle cancel and sell here, the towers handle the rest themselves.
+	
+	// XXX We hide the main dialog no matter what.
+	// XXX But watch out when we implement more dialogs with more buttons... gg!
+	zrHideTowerDialog(true);
+
+	if ( control == zrCoreCancelButton.button ) {
+		// Noop, all actions for cancel are same as all other buttons.
+		// XXX How can we map Escape to do the same thing?
+	} else if ( control == zrCoreSellButton.button ) {
+		// noop but we should sell!
+	}
+	return true;
+}
+
+bool zrSelectUnit (bool check, bool runActions) {
+	int tmp;
+	unit selected = EventUnit();
+	fixed level = UnitGetCustomValue(selected, CUSTOM_TOWER_LEVEL);
+	string unitType = UnitGetType(selected);
+	// Conditions
+	if (check) {
+		if (unitType != "Beacon_Terran" && level <= 0 ) {
+			return false;
+		}
+		// XXX Not sure if this is needed. zrWaypointUnit must be global until then
+		//if (zrWaypointUnit != null && EventUnit() == zrWaypointUnit) {
+		//	return false;
+		//}
+		//if (zrWaypointUnit != null && UnitTestState(zrWaypointUnit, c_unitStateHidden) == false) {
+		//	return false;
+		//}
+	}
+
+	// Actions
+	if (!runActions) { return true; }
+
+	// Hide old description
+	if ( zrCurrentDescriptionShown != -1 ) {
+		DialogControlSetVisible(zrCurrentDescriptionShown, zrTowerPlayer, false);
+	}
+
+	if ( unitType == "Beacon_Terran" ) {
+		zr__numshowing = 0;
+		zrCoreSelectedTower = selected;
+		zrShowTowerDialog();
+
+		DialogControlSetVisible(zrCoreSellButton.button, zrTowerPlayer, false);
+		DialogControlSetVisible(zrCoreCancelButton.button, zrTowerPlayer, false);
+
+		tmp = 0;
+		while ( tmp < 100 ) {
+			if ( zrCoreRegisteredTowers[tmp].level == 1 ) {
+				zr_ShowButton(zrCoreRegisteredTowers[tmp].button);
+			} else if ( zrCoreRegisteredTowers[tmp].level > 1 ) {
+				DialogControlSetVisible(zrCoreRegisteredTowers[tmp].button.button, zrTowerPlayer, false);
+			}
+			tmp += 1;
+		}
+		zr_ShowButton(zrCoreCancelButton);
+	} else {
+		// Check to see if any registered towers match this type
+		// The quickest way to do that is to see if the unit has set a tower level property
+		if ( level > 0 ) {
+			zr__numshowing = 0;
+			zrCoreSelectedTower = selected;
+			zrShowTowerDialog();
+			
+			// Find all buttons one level up
+			level += 1;
+
+			// Hide sell+cancel in case they were visible
+			DialogControlSetVisible(zrCoreSellButton.button, zrTowerPlayer, false);
+			DialogControlSetVisible(zrCoreCancelButton.button, zrTowerPlayer, false);
+
+			tmp = 1;
+			while ( tmp < 100 ) { // We can while true because as long as the player isnt cheating in some way this will always match in the end.
+				if ( zrCoreRegisteredTowers[tmp].level > 0 ) {
+					// level > 0 means this index is not empty at least
+					// level = 1000 means always show
+					if ( zrCoreRegisteredTowers[tmp].unitType == unitType && (zrCoreRegisteredTowers[tmp].level == level || zrCoreRegisteredTowers[tmp].level == 1000) ) {
+						zr_ShowButton(zrCoreRegisteredTowers[tmp].button);
+					} else {
+						DialogControlSetVisible(zrCoreRegisteredTowers[tmp].button.button, zrTowerPlayer, false);
+					}
+				}
+				tmp += 1;
+			}
+			zr_ShowButton(zrCoreSellButton);
+			zr_ShowButton(zrCoreCancelButton);
+		}
+	}
+	return true;
+}
+
+bool zrDeselectedUnit(bool check, bool run) {
+	// XXX No checks here we always do it.
+	// XXX Not good for hero stuff etc must fix
+	if (!run) { return true; }
+	zrHideTowerDialog(false);
+	return true;
+}
+
+bool zrCoreHandleKeypress(bool check, bool run) {
+	if (!run) { return true; }
+	zrHideTowerDialog(true);
+	return true;
+}
+
+static const string zrUIDescriptionFormat = "" +
+	"<s val=\"ZRH2\"><c val=\"2980b9\">%name</c></s><n/>" +
+	"<s val=\"ZRH3\"><c val=\"d35400\">%type</c></s><n/><n/>" +
+	"<s val=\"ModLeftSize20\">%desc</s><n/><n/>" +
+	"<s val=\"ZRH4\"><c val=\"4CAF50\">Strong against</c></s><n/>" +
+		"<s val=\"ModLeftSize20\">%strong</s><n/><n/>" +
+	"<s val=\"ZRH4\"><c val=\"4CAF50\">Weak against</c></s><n/>" +
+		"<s val=\"ModLeftSize20\">%weak</s><n/><n/>" +
+	"<s val=\"ZRH4\"><c val=\"4CAF50\">Upgrades</c></s></n>" +
+		"<s val=\"ModLeftSize20\">%upgrades</s></n></n>" +
+	"<s val=\"ZRH4\"><c val=\"2980b9\">Cost:</c> %cost Minerals</s>";
+
+// PUBLIC
+
+string zrCoreFormatDescription(string name, string type, string desc, string strong, string weak, string upgrades, int cost) {
+	string ret = StringReplaceWord(zrUIDescriptionFormat, "%name", name, 1, true);
+	ret = StringReplaceWord(ret, "%type", type, 1, true);
+	ret = StringReplaceWord(ret, "%desc", desc, 1, true);
+	ret = StringReplaceWord(ret, "%strong", strong, 1, true);
+	ret = StringReplaceWord(ret, "%weak", weak, 1, true);
+	ret = StringReplaceWord(ret, "%upgrades", upgrades, 1, true);
+	ret = StringReplaceWord(ret, "%cost", IntToString(cost), 1, true);
+	return ret;
+}
+
+void zrInitUI() {
+	zrCreateMainDialog();
+	zrCreateCancelButton();
+	zrCreateSellButton();
+
+	// c_invalidDialogControlId = any
+	TriggerAddEventDialogControl(TriggerCreate("zrShowButtonInfo"), ZR_TOWER_PLAYER_ID, c_invalidDialogControlId, c_triggerControlEventTypeMouseEnter);
+	TriggerAddEventDialogControl(TriggerCreate("zrCoreHandleButtonClick"), ZR_TOWER_PLAYER_ID, c_invalidDialogControlId, c_triggerControlEventTypeClick);
+	TriggerAddEventUnitSelected(TriggerCreate("zrSelectUnit"), null, ZR_TOWER_PLAYER_ID, true);
+	TriggerAddEventUnitSelected(TriggerCreate("zrDeselectedUnit"), null, ZR_TOWER_PLAYER_ID, false);
+	TriggerAddEventKeyPressed(TriggerCreate("zrCoreHandleKeypress"), ZR_TOWER_PLAYER_ID, c_keyEscape, true, c_keyModifierStateIgnore, c_keyModifierStateIgnore, c_keyModifierStateIgnore);
+}

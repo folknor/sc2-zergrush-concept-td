@@ -1,0 +1,143 @@
+// RESERVED UNIT CUSTOM ID RANGE: 50-59
+
+static const string zrATTName = "AUTO TURRETS";
+static const string zrATTType = "Level 1 Ranged Tower";
+static const string zrATTDesc = "3 small turrets ready to plow down your enemies with deadly precision! They deal low damage but their fire rate is quite high!";
+static const string zrATTStrong = "Very effective against unarmored enemies with low health, like Zerglings and Banelings.";
+static const string zrATTWeak = "Ultralisks laugh when they walk by these turrets!";
+static const string zrATTUpgrades = "Can be upgraded to level 2 Auto Turret.";
+static const int zrATTCost = 70;
+
+// Remember you upgrade a single turret, not all 3
+static const string zrATT2Name = "AUTO TURRET";
+static const string zrATT2Type = "Level 2 Ranged Tower";
+static const string zrATT2Desc = "Doubles the damage output of this turret.";
+static const string zrATT2Strong = zrATTStrong;
+static const string zrATT2Weak = zrATTWeak;
+static const string zrATT2Upgrades = "Can be upgraded to level 3 Auto Turret.";
+static const int zrATT2Cost = 45;
+
+static const string zrATT3Name = "AUTO TURRET";
+static const string zrATT3Type = "Level 3 Ranged Tower";
+static const string zrATT3Desc = "Extremely effective at shredding swarms of units with significantly increased attack speed.";
+static const string zrATT3Strong = zrATTStrong;
+static const string zrATT3Weak = "Ultralisks walk past this turret.";
+static const string zrATT3Upgrades = "Can be upgraded either to Psionic Turret or Hunter Turret.";
+static const int zrATT3Cost = 55;
+
+// xxx look at the ability of the nova unit in the map on bnet arcade
+static const string zrATT41Name = "PSIONIC TURRET";
+static const string zrATT41Type = "Level 4 Ranged Tower";
+static const string zrATT41Desc = "Periodically debuffs enemies with a psionic lightning bullet that shocks them periodically. Each shock causes a small amount of damage and a quick stun.";
+static const string zrATT41Strong = zrATTStrong;
+static const string zrATT41Weak = "Ultralisks try to walk past this turret, but stumble continously.";
+static const string zrATT41Upgrades = "Upgrade the lightning bullet until you can no more.";
+static const int zrATT41Cost = 90;
+
+// xxx hunters mark!
+static const string zrATT42Name = "HUNTER TURRET";
+static const string zrATT42Type = "Level 4 Ranged Tower";
+static const string zrATT42Desc = "With its terrifying range, the Hunter Turret can track any unit it wants. And the operator communicates target details to other operators in your brigade. Anyone focused on the same target as the Hunter will be assisted in their targetting, increasing their efficiency by 15%.";
+static const string zrATT42Strong = "Excellent at picking off strong enemies from range, the Hunter is terrifyingly accurate.";
+static const string zrATT42Weak = "Not particularly effective versus swarms of enemies. Then again that was never the goal.";
+static const string zrATT42Upgrades = "Upgrade the percentage bonus on the mark.";
+static const int zrATT42Cost = 90;
+
+static bool zrATCreatingTurretGroupNow;
+
+// XXX Any specific behavior in Core:zrCreateTower needs to be mirrored here
+static void zrATCreateOneMore(fixed polar) {
+	unit created;
+	point position = UnitGetPosition(zrCoreSelectedTower);
+	UnitCreate(1, "AutoTurret", c_unitCreateIgnorePlacement, ZR_TOWER_PLAYER_ID, PointWithOffsetPolar(position, 1, polar), 0);
+	created = UnitLastCreated();
+	UnitSetCustomValue(created, CUSTOM_TOWER_LEVEL, 1);
+	UnitSetScale(created, 60.0, 60.0, 60.0);
+	UnitBehaviorAddPlayer(created, "PermanentlyUncommandable", ZR_TOWER_PLAYER_ID, 1);
+	UnitSetState(created, c_unitStateSelectable, true);
+	UnitSetState(created, c_unitStateTargetable, true);
+	UnitSetState(created, c_unitStateInvulnerable, true);
+	UnitSetState(created, c_unitStateMoveSuppressed, true);
+	UnitSetState(created, c_unitStateStatusBar, true);
+}
+
+// We need this to handle creating 3 of them at a time.
+bool zrATHandleUnitCreated (bool check, bool run) {
+	unit created = EventUnitCreatedUnit();
+	string type = UnitGetType(created);
+	if ( (check) && (type != "AutoTurret" || zrATCreatingTurretGroupNow == false) ) { return false; }
+	if (!run) { return true; }
+
+	zrATCreatingTurretGroupNow = false;
+	zrATCreateOneMore(RandomFixed(0, 179));
+	zrATCreateOneMore(RandomFixed(180, 359));
+
+	return true;
+}
+// ATT = AutoTurretTower
+static int zrATTMainButton;
+static int zrATT2Button;
+static int zrATT3Button;
+static int zrATT41Button;
+static int zrATT42Button;
+
+bool zrATHandleClick(bool check, bool run) {
+	int control = EventDialogControl();
+	unit tmp;
+	if (!run) { return true; }
+
+	if ( control == zrATTMainButton ) {
+		zrATCreatingTurretGroupNow = true;
+		tmp = zrCoreTryCreateTower(control, zrATTCost);
+		if ( UnitGetType(tmp) == "AutoTurret" ) { // Returns the beacon if not successful
+			UnitSetScale(tmp, 60.0, 60.0, 60.0); // Specific to turrets
+		} else {
+			zrATCreatingTurretGroupNow = false;
+		}
+		
+	} else if ( control == zrATT2Button ) {
+		// Quite easy, we add 1 attack bonus which multiplies weapon damage by 2
+		if ( zrCoreUpgradeTower(zrCoreSelectedTower, zrATT2Cost) ) {
+			UnitBehaviorAddPlayer(zrCoreSelectedTower, "AttackBonus", ZR_TOWER_PLAYER_ID, 1);
+			UnitSetCustomValue(zrCoreSelectedTower, CUSTOM_TOWER_LEVEL, 2);
+		}
+	} else if ( control == zrATT3Button ) {
+		if ( zrCoreUpgradeTower(zrCoreSelectedTower, zrATT3Cost) ) {
+			// Quite easy, we add 1 attack speed bonus which multiplies weapon speed by 2
+			UnitBehaviorAddPlayer(zrCoreSelectedTower, "AttackSpeedBonus", ZR_TOWER_PLAYER_ID, 1);
+			UnitSetCustomValue(zrCoreSelectedTower, CUSTOM_TOWER_LEVEL, 3);
+		}
+	} else if ( control == zrATT41Button ) {
+		zrdbg("AT", "Create level 4.1.");
+		zrCoreUpgradeTower(zrCoreSelectedTower, zrATT41Cost);
+	} else if ( control == zrATT42Button ) {
+		zrdbg("AT", "Create level 4.2.");
+		zrCoreUpgradeTower(zrCoreSelectedTower, zrATT42Cost);
+	}
+	return true;
+}
+
+void zrAutoTurretInit() {
+	string tmp;
+
+	zrATCreatingTurretGroupNow = false;
+
+	tmp = zrCoreFormatDescription(zrATTName, zrATTType, zrATTDesc, zrATTStrong, zrATTWeak, zrATTUpgrades, zrATTCost);
+	zrATTMainButton = zrCoreRegisterTowerClass("AutoTurret", 70, "Auto Turret", tmp);
+
+	tmp = zrCoreFormatDescription(zrATT2Name, zrATT2Type, zrATT2Desc, zrATT2Strong, zrATT2Weak, zrATT2Upgrades, zrATT2Cost);
+	zrATT2Button = zrCoreRegisterUpgrade(zrATTMainButton, 45, "Upgrade", tmp);
+
+	tmp = zrCoreFormatDescription(zrATT3Name, zrATT3Type, zrATT3Desc, zrATT3Strong, zrATT3Weak, zrATT3Upgrades, zrATT3Cost);
+	zrATT3Button = zrCoreRegisterUpgrade(zrATT2Button, 55, "Upgrade", tmp);
+
+	tmp = zrCoreFormatDescription(zrATT41Name, zrATT41Type, zrATT41Desc, zrATT41Strong, zrATT41Weak, zrATT41Upgrades, zrATT41Cost);
+	zrATT41Button = zrCoreRegisterUpgrade(zrATT3Button, 90, "Psionic", tmp);
+
+	tmp = zrCoreFormatDescription(zrATT42Name, zrATT42Type, zrATT42Desc, zrATT42Strong, zrATT42Weak, zrATT42Upgrades, zrATT42Cost);
+	zrATT42Button = zrCoreRegisterUpgrade(zrATT3Button, 90, "Hunter", tmp);
+
+	CatalogFieldValueSet(c_gameCatalogWeapon, "AutoTurret", "Range", 1, IntToString(ZR_BASE_TOWER_RANGE));
+	TriggerAddEventDialogControl(TriggerCreate("zrATHandleClick"), ZR_TOWER_PLAYER_ID, c_invalidDialogControlId, c_triggerControlEventTypeClick);
+	TriggerAddEventUnitCreated(TriggerCreate("zrATHandleUnitCreated"), null, null, null);
+}

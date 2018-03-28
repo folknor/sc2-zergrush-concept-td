@@ -1,0 +1,8 @@
+Effect/Name/ApplyCasterBuff=Apply Caster Buff
+Effect/Name/ApplyTargetBuff=Apply Target Buff
+Effect/Name/AttackEnemy=Attack Enemy
+Effect/Name/RemoveCasterBuff=Remove Caster Buff
+Effect/Name/RemoveTargetBuff=Remove Target Buff
+Effect/Name/SetBlocker=Set Blocker
+Validator/Name/ValidateCasterBuff=Validate Caster Buff
+Validator/Name/ValidateTargetBuff=Validate Target Buff

@@ -1,0 +1,102 @@
+
+// note that this triggers after the total duration of
+// a stage has ran out. This means there might still be
+// enemies left on the map.
+const string ZRE_STAGE_STARTED = "StageStarted";
+const string ZRE_STAGE_FINISHED = "StageFinished";
+const string ZRE_HEROES_CONFIRMED = "AllHeroesConfirmed";
+
+abilcmd zr_CmdStop = AbilityCommand("stop", 0);
+abilcmd zr_CmdMove = AbilityCommand("move", 0);
+abilcmd zr_CmdPatrol = AbilityCommand("move", 1);
+abilcmd zr_CmdAttack = AbilityCommand("attack", 0);
+
+const int CUSTOM_TOWER_LEVEL = 1; // Attribute that reflects current tower level
+
+const int ZR_LOW_TOWER_RANGE = 6;
+const int ZR_BASE_TOWER_RANGE = 8;
+const int ZR_AVERAGE_TOWER_RANGE = 10;
+const int ZR_LONG_TOWER_RANGE = 13;
+const int ZR_VERY_LONG_TOWER_RANGE = 17;
+
+const int ZR_TOWER_PLAYER_ID = 1;
+playergroup zrTowerPlayer;
+playergroup zrHeroPlayers;
+
+struct zrCoreButtonInfo {
+	int description; // Dialog control ref
+	int button; // Dialog control ref
+};
+typedef structref<zrCoreButtonInfo> zrButton;
+
+// button ints refer to dialog controls
+struct zrCoreTowerInfo {
+	string unitType;
+	fixed level;
+	int cost;
+	zrCoreButtonInfo button; // Button two will never be used unless one is set
+};
+typedef structref<zrCoreTowerInfo> zrTower;
+zrCoreTowerInfo[200] zrCoreRegisteredTowers; // Any item might be empty, we index by dialog control ID.
+// XXX These dialog control IDs are weird.
+
+const int ZR_WAVE_TIME_ADD = 5;
+
+struct zrWaveInfo {
+	bool started; // Internal
+	fixed nextSpawnTime; // Internal
+	bool used; // Internal, true if this wave is used by the game.
+	bool pinged; // Internal
+	point pingPoint; // Internal
+	point entrancePoint; // Internal
+	point exitPoint; // Internal
+
+	// From User Data fields.
+	string unitType;
+	fixed startTime;
+	fixed timeBetween;
+	int waveCount;
+	int amountPerWave;
+	string entrance;
+	string exit;
+};
+typedef structref<zrWaveInfo> zrWave;
+
+struct zrStageInfo {
+	bool used;
+	bool warnedNext;
+	int index;
+	fixed totalDuration;
+	fixed startedAt;
+	trigger runner;
+	zrWaveInfo[21] waves;
+};
+typedef structref<zrStageInfo> zrStage;
+zrStageInfo[21] zrStages; // 1-based index
+
+// 9-17 / Slow / Short
+// 23-43 / Slow / Average
+// 40-74 / Slow / Long
+// 76-140 / Very Slow / Great
+// 42-78 / Slow / Great
+// 8-16 / Very Fast / Long
+
+
+//$primary-color-dark:    #5D4037;
+//$primary-color:         #795548;
+//$primary-color-light:   #D7CCC8;
+//$primary-color-text:    #FFFFFF;
+//$accent-color:          #4CAF50;
+//$primary-text-color:    #212121;
+//$secondary-text-color:  #727272;
+//$divider-color:         #B6B6B6;
+//$dark-blue: #3883a3; = rgb(22%,51%,64%)
+//$light-green: #97ce7f; = rgb(59%,81%,50%)
+//$dark-gray: #414141; = rgb(25%,25%,25%)
+//$light-gray: #ebebeb; = rgb(92%,92%,92%)
+//$yellow: #ddca9a; = rgb(87%,79%,60%)
+//$dark-green: #69a776; = rgb(41%,65%,46%)
+//$oransje: #d35400; = rgb(83%,33%,0%)
+//$sement: #95a5a6; = rgb(58%,65%,65%)
+//$blue: #2980b9; = rgb(16%,50%,73%)
+//$red: #c0392b; = rgb(75%,22%,17%)

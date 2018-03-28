@@ -1,0 +1,145 @@
+// PRIVATE
+static unit zrCreateTower(zrTower tower, unit bacon) {
+	// Rub hands!
+	unit created;
+	UnitCreate(1, tower.unitType, c_unitCreateIgnorePlacement, ZR_TOWER_PLAYER_ID, UnitGetPosition(bacon), 0);
+	created = UnitLastCreated();
+
+	UnitSetCustomValue(created, CUSTOM_TOWER_LEVEL, tower.level);
+	UnitBehaviorAddPlayer(created, "PermanentlyUncommandable", ZR_TOWER_PLAYER_ID, 1);
+	UnitSetState(created, c_unitStateSelectable, true);
+	UnitSetState(created, c_unitStateTargetable, true);
+	UnitSetState(created, c_unitStateInvulnerable, true);
+	UnitSetState(created, c_unitStateMoveSuppressed, true);
+
+	UnitSetState(created, c_unitStateStatusBar, true);
+
+	SoundPlayOnUnit(SoundLink("Terran_BuildingPlacementSmall", -1), PlayerGroupAll(), created, 0, 100, 0);
+
+	//Wait(0.1, c_timeGame);
+	UnitRemove(bacon); // Eat bacon!
+	//Wait(0.1, c_timeGame);
+	return UnitLastCreated();
+}
+
+bool zrUnitCreated (bool check, bool run) {
+	unit created = EventUnitCreatedUnit();
+	string type = UnitGetType(created);
+
+	if ( check && type == "Beacon_Terran" ) {
+		return false;
+	}
+
+	if (!run) { return true; }
+
+	if ( UnitGetOwner(created) == 15 ) {
+		UnitSetPropertyFixed(created, c_unitPropBountyMinerals, 3);
+		UnitSetState(created, c_unitStateSelectable, false);
+		UnitSetState(created, c_unitStateStatusBar, true);
+		UnitStatusBarOverride(created, c_unitStatusGroupAll);
+		UnitSetScale(created, 130.0, 130.0, 130.0);
+		UnitSetTeamColorIndex(created, 5); // Yellow because it's cool
+	}
+
+	return true;
+}
+
+
+// PUBLIC
+
+unit zrCoreTryCreateTower(int towerId, int cost) {
+	int canHas = PlayerGetPropertyInt(ZR_TOWER_PLAYER_ID, c_playerPropMinerals);
+	if ( canHas < cost ) { return zrCoreSelectedTower; }
+	PlayerModifyPropertyInt(ZR_TOWER_PLAYER_ID, c_playerPropMinerals, c_playerPropOperSubtract, cost);
+
+	return zrCreateTower(zrCoreRegisteredTowers[towerId], zrCoreSelectedTower);
+
+	// XXX Remove minerals
+	// XXX Same func for on upgrade?
+}
+
+bool zrCoreUpgradeTower(unit tower, int cost) {
+	int canHas = PlayerGetPropertyInt(ZR_TOWER_PLAYER_ID, c_playerPropMinerals);
+	if ( canHas < cost ) { return false; }
+	PlayerModifyPropertyInt(ZR_TOWER_PLAYER_ID, c_playerPropMinerals, c_playerPropOperSubtract, cost);
+
+	SoundPlayOnUnit(SoundLink("Terran_BuildingPlacementSmall", -1), PlayerGroupAll(), tower, 0, 100, 0);
+	libNtve_gf_AttachModelToUnit(tower, "RecalledImpact", "Ref_Origin");
+
+	return true;
+}
+
+//         TriggerAddEventUnitGainLevel(null)
+
+int zrCoreRegisterTowerClass(string unitType, int cost, string displayName, string description) {
+	int tmp;
+	zrTower reg;
+	tmp = zrUICreateTowerButton(displayName);
+	reg = zrCoreRegisteredTowers[tmp];
+	reg.unitType = unitType;
+	reg.level = 1;
+	reg.cost = cost;
+	reg.button.button = tmp;
+	reg.button.description = zrUICreateTowerButtonDesc(description);
+
+	//zrdbg("Core", "New index is " + IntToString(tmp));
+
+	return tmp;
+}
+
+int zrCoreRegisterUpgrade(int parent, int cost, string displayName, string description) {
+	int tmp;
+	zrTower reg;
+	zrTower parentTower = zrCoreRegisteredTowers[parent];
+
+	tmp = zrUICreateTowerButton(displayName);
+	reg = zrCoreRegisteredTowers[tmp];
+	reg.unitType = parentTower.unitType;
+	reg.level = parentTower.level + 1;
+	reg.cost = cost;
+	reg.button.button = tmp;
+	reg.button.description = zrUICreateTowerButtonDesc(description);
+
+	//zrdbg("Core", "Upgrade index is " + IntToString(tmp));
+
+	return tmp;
+}
+
+int zrCoreRegisterPersistentButton(string unitType, string displayName, string description) {
+	int tmp;
+	zrTower reg;
+
+	tmp = zrUICreateTowerButton(displayName);
+	reg = zrCoreRegisteredTowers[tmp];
+
+	reg.unitType = unitType;
+	reg.level = 1000;
+	reg.button.button = tmp;
+	reg.button.description = zrUICreateTowerButtonDesc(description);
+
+	//zrdbg("Core", "Persistent index is " + IntToString(tmp));
+
+	return tmp;
+}
+
+int zrCoreRegisterButton(string unitType, int level, string displayName, string description) {
+	int tmp;
+	zrTower reg;
+
+	tmp = zrUICreateTowerButton(displayName);
+	reg = zrCoreRegisteredTowers[tmp];
+
+	reg.unitType = unitType;
+	reg.level = level;
+	reg.button.button = tmp;
+	reg.button.description = zrUICreateTowerButtonDesc(description);
+
+	//zrdbg("Core", "Button index is " + IntToString(tmp));
+
+	return tmp;
+}
+
+// 265 minerals first level
+// Need mineral, life and wave counter
+// Need wave incoming display
+// Default death = 3 minerals, 5,

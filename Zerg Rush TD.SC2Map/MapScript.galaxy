@@ -1,0 +1,167 @@
+//==================================================================================================
+// 
+// Generated Map Script
+// 
+// Name:   Zerg Rush	
+// 
+//==================================================================================================
+include "TriggerLibs/NativeLib"
+
+//--------------------------------------------------------------------------------------------------
+// Library Initialization
+//--------------------------------------------------------------------------------------------------
+void InitLibs () {
+    libNtve_InitLib();
+}
+
+//--------------------------------------------------------------------------------------------------
+// Trigger Variables
+//--------------------------------------------------------------------------------------------------
+trigger gt_MeleeInitialization;
+trigger gt_HeroesConfirmed;
+trigger gt_Exit;
+
+//--------------------------------------------------------------------------------------------------
+// Custom Script: Library
+//--------------------------------------------------------------------------------------------------
+include "Code/Debug"
+include "Code/Constants"
+include "Code/API"
+// The 3 above need to be in that order
+include "Code/Core"
+include "Code/HeroSelect"
+include "Code/Dialog"
+include "Code/Waves"
+include "Code/Towers/Turret"
+include "Code/Towers/Barracks"
+include "Code/Towers/Archon"
+include "Code/Towers/Siege"
+// Only include one intro or it wont work
+include "Code/Intros/Trucks"
+//include "Code/Intros/CustomIntro"
+// Init needs to be last
+include "Code/Init"
+
+//--------------------------------------------------------------------------------------------------
+// Custom Script: Protoss Base
+//--------------------------------------------------------------------------------------------------
+void zrtdCreateFakeProtoss() {
+    	actor[10] zrFakeUnits;
+    	int i;
+	// Map specific
+	libNtve_gf_CreateModelWithPointFacing("Zealot", PointFromName("Zealot 1"));
+	zrFakeUnits[0] = libNtve_gf_ActorLastCreated();
+	libNtve_gf_CreateModelWithPointFacing("Zealot", PointFromName("Zealot 2"));
+	zrFakeUnits[1] = libNtve_gf_ActorLastCreated();
+	libNtve_gf_CreateModelWithPointFacing("Zealot", PointFromName("Zealot 3"));
+	zrFakeUnits[2] = libNtve_gf_ActorLastCreated();
+	libNtve_gf_CreateModelAtPoint("Nexus", PointFromName("Nexus"));
+	zrFakeUnits[3] = libNtve_gf_ActorLastCreated();
+	libNtve_gf_CreateModelWithPointFacing("Sentry", PointFromName("Sentry"));
+	zrFakeUnits[4] = libNtve_gf_ActorLastCreated();
+	libNtve_gf_CreateModelAtPoint("Pylon", PointFromName("Pylon"));
+	zrFakeUnits[5] = libNtve_gf_ActorLastCreated();
+	libNtve_gf_CreateModelAtPoint("CyberneticsCore", PointFromName("Cybernetics Core"));
+	zrFakeUnits[6] = libNtve_gf_ActorLastCreated();
+	libNtve_gf_CreateModelAtPoint("PhotonCannon", PointFromName("Photon Cannon"));
+	zrFakeUnits[7] = libNtve_gf_ActorLastCreated();
+	while (i < 8) {
+		ActorSend(zrFakeUnits[i], libNtve_gf_SetScale(0.75, 0.75, 0.75, 0));
+		i += 1;
+	}
+}
+
+//--------------------------------------------------------------------------------------------------
+// Custom Script Initialization
+//--------------------------------------------------------------------------------------------------
+void InitCustomScript () {
+    InitZergRushCore();
+    zrtdCreateFakeProtoss();
+}
+
+//--------------------------------------------------------------------------------------------------
+// Trigger: Melee Initialization
+//--------------------------------------------------------------------------------------------------
+bool gt_MeleeInitialization_Func (bool testConds, bool runActions) {
+    // Actions
+    if (!runActions) {
+        return true;
+    }
+
+    PlayerModifyPropertyInt(1, c_playerPropMinerals, c_playerPropOperSetTo, 20000);
+    CameraApplyInfo(1, CameraInfoFromId(580), 0.0, -1, 10.0, true);
+    CameraLockInput(1, true);
+    libNtve_gf_CinematicMode(true, PlayerGroupAll(), c_transitionDurationImmediate);
+    StartZergRushIntro();
+    CinematicFade(false, 0.0, c_fadeStyleNormal, Color(0.00, 0.00, 0.00), 0.0, false);
+    CinematicFade(true, 3.0, c_fadeStyleNormal, Color(0.00, 0.00, 0.00), 0.0, true);
+    UISetCursorVisible(PlayerGroupAll(), true);
+    DoHeroSelection("Zerg Rush: Defend the Tribe!", "Welcome to the first map in the Zerg Rush series, Defend the Tribe! We start with the hero selection below. When all players have confirmed, the game starts. Player 1 is always the builder, noone else can touch the turrets. Good luck!");
+    return true;
+}
+
+//--------------------------------------------------------------------------------------------------
+void gt_MeleeInitialization_Init () {
+    gt_MeleeInitialization = TriggerCreate("gt_MeleeInitialization_Func");
+    TriggerAddEventMapInit(gt_MeleeInitialization);
+}
+
+//--------------------------------------------------------------------------------------------------
+// Trigger: All Heroes Confirmed
+//--------------------------------------------------------------------------------------------------
+bool gt_HeroesConfirmed_Func (bool testConds, bool runActions) {
+    // Actions
+    if (!runActions) {
+        return true;
+    }
+
+    ShowWaveButton();
+    CameraApplyInfo(1, CameraInfoDefault(), 2.0, 60.0, 10.0, true);
+    CameraPan(1, PointFromId(105), 2.0, -1, 10.0, false);
+    libNtve_gf_CinematicMode(false, PlayerGroupAll(), 2.0);
+    CameraLockInput(1, false);
+    return true;
+}
+
+//--------------------------------------------------------------------------------------------------
+void gt_HeroesConfirmed_Init () {
+    gt_HeroesConfirmed = TriggerCreate("gt_HeroesConfirmed_Func");
+    TriggerAddEventGeneric(gt_HeroesConfirmed, "AllHeroesConfirmed");
+}
+
+//--------------------------------------------------------------------------------------------------
+// Trigger: Exit
+//--------------------------------------------------------------------------------------------------
+bool gt_Exit_Func (bool testConds, bool runActions) {
+    // Actions
+    if (!runActions) {
+        return true;
+    }
+
+    UnitRemove(EventUnit());
+    return true;
+}
+
+//--------------------------------------------------------------------------------------------------
+void gt_Exit_Init () {
+    gt_Exit = TriggerCreate("gt_Exit_Func");
+    TriggerAddEventUnitRegion(gt_Exit, null, RegionFromId(1), true);
+}
+
+//--------------------------------------------------------------------------------------------------
+// Trigger Initialization
+//--------------------------------------------------------------------------------------------------
+void InitTriggers () {
+    gt_MeleeInitialization_Init();
+    gt_HeroesConfirmed_Init();
+    gt_Exit_Init();
+}
+
+//--------------------------------------------------------------------------------------------------
+// Map Initialization
+//--------------------------------------------------------------------------------------------------
+void InitMap () {
+    InitLibs();
+    InitCustomScript();
+    InitTriggers();
+}

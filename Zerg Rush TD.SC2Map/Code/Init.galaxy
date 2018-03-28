@@ -1,0 +1,55 @@
+
+
+bool zrDoInit(bool check, bool run) {
+	playergroup all = PlayerGroupAll();
+	if (!run) { return true; }
+
+	zrTowerPlayer = PlayerGroupSingle(ZR_TOWER_PLAYER_ID);
+	zrHeroPlayers = all;
+
+	TriggerAddEventUnitCreated(TriggerCreate("zrUnitCreated"), null, null, null);
+
+	PlayerModifyPropertyInt(1, c_playerPropSuppliesMade, c_playerPropOperSetTo, 200);
+
+	UISetFrameVisible(all, c_syncFrameTypeStatusUI, true);
+	UISetFrameVisible(all, c_syncFrameTypeInfoPanel, true);
+	UISetFrameVisible(all, c_syncFrameTypeResourcePanel, true);
+	
+	UISetResourceVisible(all, c_resourceTypeTerrazine, false);
+	UISetResourceVisible(all, c_resourceTypeVespene, false);
+	UISetResourceVisible(all, c_resourceTypeCustom, false);
+
+
+	UISetFrameVisible(all, c_syncFrameTypeHeroPanel, false);
+	UISetFrameVisible(all, c_syncFrameTypeAchievementMenuButton, false);
+	UISetFrameVisible(all, c_syncFrameTypeAllianceButton, false);
+	UISetFrameVisible(all, c_syncFrameTypeArmyButton, false);
+	UISetFrameVisible(all, c_syncFrameTypeCashPanel, false);
+	//UISetFrameVisible(all, c_syncFrameTypeCommandPanel, false);
+	UISetFrameVisible(all, c_syncFrameTypeConsolePanel, false);
+	UISetFrameVisible(all, c_syncFrameTypeControlGroupPanel, false);
+	UISetFrameVisible(all, c_syncFrameTypeIdleWorkerButton, false);
+	UISetFrameVisible(all, c_syncFrameTypeObjectivePanel, false);
+	UISetFrameVisible(all, c_syncFrameTypeSupply, false);
+
+	VisRevealArea(1, RegionEntireMap(), 0.0, false);
+
+	zrInitUI();
+
+	// Init each tower manually
+	zrAutoTurretInit();
+	zrArchonInit();
+	zrSiegeInit();
+	zrBarracksInit();
+	
+	// Finally, init waves
+	zrWavesInit();
+
+	// XXX Show the start button that calls zrCoreStartStages
+
+	return true;
+}
+
+void InitZergRushCore () {
+	TriggerAddEventMapInit(TriggerCreate("zrDoInit"));
+}

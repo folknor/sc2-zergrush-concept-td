@@ -1,0 +1,129 @@
+// TriggerAddEventGeneric("Testetssetst");
+// TriggerSendEvent("WHATTHEHELL");
+
+static int zrHeroDialog;
+static int zrHeroHeader;
+static int zrHeroDescription;
+static int zrHeroConfirmButton;
+
+static int zrHeroMagnusButton;
+static int zrHeroEirikButton;
+static int zrHeroSnorreButton;
+static int zrHeroSolButton;
+
+static const fixed zrHeroDialogFadeTime = 4;
+
+
+static int zrHeroCreateHeader(string lp_text) {
+	int parentWidth = DialogGetWidth(zrHeroDialog);
+	int dialogItem = c_invalidDialogControlId;
+	DialogControlCreate(zrHeroDialog, c_triggerControlTypeLabel);
+	dialogItem = DialogControlLastCreated();
+	DialogControlSetSize(dialogItem, PlayerGroupAll(), 1200, 100);
+	DialogControlSetPosition(dialogItem, PlayerGroupAll(), c_anchorTop, 0, 0);
+	DialogControlFadeTransparency(dialogItem, PlayerGroupAll(), 0, 100);
+	DialogControlSetVisible(dialogItem, PlayerGroupAll(), true);
+	DialogControlSetPropertyAsText(dialogItem, c_triggerControlPropertyText, PlayerGroupAll(), StringToText(lp_text));
+	DialogControlSetPropertyAsString(dialogItem, c_triggerControlPropertyStyle, PlayerGroupAll(), "ZRH1");
+	DialogControlSetPropertyAsColor(dialogItem, c_triggerControlPropertyColor, PlayerGroupAll(), Color(16, 50, 73));
+	return dialogItem;
+}
+
+static int zrHeroCreateDescription(string lpText) {
+	// this returns whatever you set it to, ignoring fullscreen
+	// at least before any ticks
+	int parentWidth = DialogGetWidth(zrHeroDialog);
+	int dialogItem = c_invalidDialogControlId;
+	fixed words = StringLength(lpText) / 5.1; // average word length according to wolfram
+	fixed wpm = 300; // apparently unless you do 600 wpm you suck!
+	fixed wps = wpm / 60;
+	fixed typeOutTime = words / wps;
+	DialogControlCreate(zrHeroDialog, c_triggerControlTypeLabel);
+	dialogItem = DialogControlLastCreated();
+	DialogControlSetSize(dialogItem, PlayerGroupAll(), 1200, 100);
+	DialogControlSetPositionRelative(dialogItem, PlayerGroupAll(), c_anchorTop, zrHeroHeader, c_anchorBottom, 0, 0);
+	DialogControlFadeTransparency(dialogItem, PlayerGroupAll(), 0, 100);
+	DialogControlSetVisible(dialogItem, PlayerGroupAll(), true);
+	DialogControlSetPropertyAsText(dialogItem, c_triggerControlPropertyText, PlayerGroupAll(), StringToText(lpText));
+	DialogControlSetPropertyAsString(dialogItem, c_triggerControlPropertyStyle, PlayerGroupAll(), "ChallengeScreenText");
+	DialogControlSetPropertyAsColor(dialogItem, c_triggerControlPropertyColor, PlayerGroupAll(), Color(100, 100, 100));
+	DialogControlSetPropertyAsBool(dialogItem, c_triggerControlPropertyTextWriteout, PlayerGroupAll(), false);
+	DialogControlSetPropertyAsFixed(dialogItem, c_triggerControlPropertyTextWriteoutDuration, PlayerGroupAll(), typeOutTime);
+	DialogControlSetEnabled(dialogItem, PlayerGroupAll(), false);
+	return dialogItem;
+}
+
+static int zrHeroCreateButton(string buttonText) {
+	int dialogItem = c_invalidDialogControlId;
+	DialogControlCreate(zrHeroDialog, c_triggerControlTypeButton);
+	dialogItem = DialogControlLastCreated();
+	DialogControlSetSize(dialogItem, PlayerGroupAll(), 200, 200);
+	DialogControlFadeTransparency(dialogItem, PlayerGroupAll(), 0, 100);
+	DialogControlSetVisible(dialogItem, PlayerGroupAll(), true);
+	DialogControlSetPropertyAsText(dialogItem, c_triggerControlPropertyText, PlayerGroupAll(), StringToText(buttonText));
+	return dialogItem;
+}
+
+static void zrHeroCreateAllButtons() {
+	// horizontal scrollable hero unit (html5 thing) where the heroes at the edges fade.
+	// click one to scroll quickly. Show selected hero info below.
+	zrHeroMagnusButton = zrHeroCreateButton("Magnus");
+	zrHeroEirikButton = zrHeroCreateButton("Eirik");
+	zrHeroSnorreButton = zrHeroCreateButton("Snorre");
+	zrHeroSolButton = zrHeroCreateButton("Sol");
+	
+	zrHeroConfirmButton = zrHeroCreateButton("Confirm");
+	DialogControlSetSize(zrHeroConfirmButton, PlayerGroupAll(), 200, 80);
+	DialogControlSetPosition(zrHeroConfirmButton, PlayerGroupAll(), c_anchorBottomRight, 40, 40);
+	
+	DialogControlSetPositionRelative(zrHeroMagnusButton, PlayerGroupAll(), c_anchorTopLeft, zrHeroDescription, c_anchorBottomLeft, 0, 50);
+	DialogControlSetPositionRelative(zrHeroEirikButton, PlayerGroupAll(), c_anchorTopLeft, zrHeroMagnusButton, c_anchorTopRight, 50, 0);
+	DialogControlSetPositionRelative(zrHeroSnorreButton, PlayerGroupAll(), c_anchorTop, zrHeroMagnusButton, c_anchorBottom, 0, 50);
+	DialogControlSetPositionRelative(zrHeroSolButton, PlayerGroupAll(), c_anchorTop, zrHeroEirikButton, c_anchorBottom, 0, 50);
+}
+
+static void zrHeroCreateDialog() {
+	DialogCreate(1200, 750, c_anchorCenter, 0, -100, true);
+	zrHeroDialog = DialogLastCreated();
+	DialogSetVisible(zrHeroDialog, PlayerGroupAll(), true);
+	DialogSetImageVisible(zrHeroDialog, false); // Hide background
+	//DialogSetFullscreen(zrHeroDialog, true);
+}
+
+bool zrHeroHandleButtonClick(bool check, bool run) {
+	int btn = EventDialogControl();
+	if ( ! run ) { return true; }
+	if ( btn == zrHeroMagnusButton ) {
+	
+	} else if ( btn == zrHeroEirikButton ) {
+	
+	} else if ( btn == zrHeroSnorreButton ) {
+	
+	} else if ( btn == zrHeroSolButton ) {
+	
+	} else if ( btn == zrHeroConfirmButton ) {
+		DialogSetVisible(zrHeroDialog, PlayerGroupAll(), false);
+		TriggerSendEvent("AllHeroesConfirmed");
+	}
+	return true;
+}
+
+
+void DoHeroSelection(string mapName, string welcomeMessage) {
+	zrHeroCreateDialog();
+	zrHeroHeader = zrHeroCreateHeader(mapName);
+	zrHeroDescription = zrHeroCreateDescription(welcomeMessage);
+	zrHeroCreateAllButtons();
+	DialogControlFadeTransparency(zrHeroHeader, PlayerGroupAll(), zrHeroDialogFadeTime, 0);
+	DialogControlFadeTransparency(zrHeroDescription, PlayerGroupAll(), zrHeroDialogFadeTime, 0);
+	DialogControlSetPropertyAsBool(zrHeroDescription, c_triggerControlPropertyTextWriteout, PlayerGroupAll(), true);
+	DialogControlFadeTransparency(zrHeroMagnusButton, PlayerGroupAll(), zrHeroDialogFadeTime, 0);
+	DialogControlFadeTransparency(zrHeroEirikButton, PlayerGroupAll(), zrHeroDialogFadeTime, 0);
+	DialogControlFadeTransparency(zrHeroSnorreButton, PlayerGroupAll(), zrHeroDialogFadeTime, 0);
+	DialogControlFadeTransparency(zrHeroSolButton, PlayerGroupAll(), zrHeroDialogFadeTime, 0);
+	DialogControlFadeTransparency(zrHeroConfirmButton, PlayerGroupAll(), zrHeroDialogFadeTime, 0);
+	DialogControlSetEnabled(zrHeroDescription, PlayerGroupAll(), true);
+	TriggerAddEventDialogControl(TriggerCreate("zrHeroHandleButtonClick"), c_playerAny, c_invalidDialogControlId, c_triggerControlEventTypeClick);
+}
+
+// DialogControlFadeTransparency
