@@ -1,5 +1,0 @@
-CustomScript/Name/2E69C7EA=Library
-CustomScript/Name/CA8FED45=Protoss Base
-Trigger/Name/7A54404F=Exit
-Trigger/Name/94B90DC5=All Heroes Confirmed
-Trigger/Name/9ACFB168=Melee Initialization

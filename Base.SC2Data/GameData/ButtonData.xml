@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="us-ascii"?>
-<Catalog>
-    <CButton id="PsionicShockBullet">
-        <Icon value="Assets\Textures\btn-ability-protoss-timebomb.dds"/>
-    </CButton>
-</Catalog>
